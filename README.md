@@ -1,7 +1,7 @@
 # Meydan — içine gir.
 
 **Takım:** KAYALAR
-**Yarışma:** TEKNOFEST NSosyal İnovasyon Yarışması (2N Medya × T3 Vakfı)
+**Yarışma:** TEKNOFEST NSosyal İnovasyon Yarışması
 
 ## Fikir
 
