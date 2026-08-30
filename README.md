@@ -18,33 +18,37 @@ TEKNOFEST NSosyal İnovasyon Yarışması
 
 Bugünkü sosyal platformlarda bir fikir paylaşılır, beğeni/yorum alır ve kaybolur gider — hiçbir zaman somut bir sonuca evrilmez. Fikir sahibi de, onu geliştirmek isteyenler de birbirini bulamaz.
 
-**Meydan**, paylaşılan fikirlerin gerçek bir gelişim sürecinden geçtiği ve bu sürecin 3B, herkesin **aynı anda birlikte bulunduğu tek bir ortak dünyada** görselleştiği bir platformdur — yapay zekânın herkese ayrı, izole bir dünya ürettiği bir sistem değil. Bir fikir, merkezdeki meydandan açılan sabit bir hat üzerinde ilerler: **Fikir → Tasarım → Üretim → Topluluk → Pazar → Başarı**.
+**Meydan**, paylaşılan fikirlerin gerçek bir gelişim sürecinden geçtiği ve bu sürecin 3B, herkesin **aynı anda birlikte bulunduğu tek bir ortak dünyada** görselleştiği bir platform vizyonuyla yola çıkar — yapay zekânın herkese ayrı, izole bir dünya ürettiği bir sistem değil. Bir fikir, merkezdeki meydandan açılan sabit bir hat üzerinde ilerler: **Fikir → Tasarım → Üretim → Topluluk → Pazar → Başarı**.
 
 | # | Bölge | Ne işe yarar |
 |---|-------|---------------|
-| 1 | **Fikir** | Fikir paylaşılır, AI Fikir Çekirdeği analiz edip yönlendirir |
+| 1 | **Fikir** | Fikir paylaşılır, Fikir Çekirdeği analiz edip yönlendirir |
 | 2 | **Tasarım** | İsteyen kullanıcılar fikre katkı/geliştirme önerisi sunar, sahibi onaylar |
 | 3 | **Üretim** | Onaylanan tasarım somut bir ürüne/prototipe dönüşür |
 | 4 | **Topluluk** | Geri bildirim alınır, tartışılır, iyileştirilir |
 | 5 | **Pazar** | Ürün paylaşılır, gerçek değer kazanmaya başlar |
 | 6 | **Başarı** | Fikir sahibi + tüm katkı verenler Katkı Puanı (KP) ile ödüllenir |
 
-Fikrin sahibi her aşamada sahip kalır; katkı verenler kendi KP'sini kendi emeğiyle kazanır.
+Fikrin sahibi her aşamada sahip kalır; katkı verenler kendi KP'sini kendi emeğiyle kazanır. Bu akışın 3B dünya karşılığı bugün itibarıyla **gezilebilir** durumda; fikir gönderimi, onay ve KP hesaplaması ise henüz koda bağlanmamış, aşağıdaki [Sonraki Adımlar](#sonraki-adımlar-planlanan) bölümünde planlanan işlevlerdir.
+
+<p align="center">
+  <img src="docs/ada_genel_gorunum.png" alt="Meydan — ada genel görünümü, 6 bölge ve merkez çekirdek" width="100%" />
+</p>
+<p align="center"><sub>Görseller, projenin gerçekten çalıştırılan 3B ortamından alınmıştır.</sub></p>
 
 ### Ürün Özellikleri
 
-- Fikir paylaşımı ve AI Fikir Çekirdeği ile otomatik analiz/yönlendirme
-- Fikre katkı/geliştirme önerisi sunma ve fikir sahibinin onay akışı
-- Onaylanan tasarımın somut ürüne/prototipe dönüşüm takibi
-- Topluluk geri bildirimi ve tartışma mekanizması
-- Ürünün pazarda paylaşılıp gerçek değer kazanması
-- Katkı Puanı (KP) ile şeffaf, emek bazlı ödüllendirme
-- Herkesin aynı anda birlikte bulunduğu tek bir ortak 3B dünya (izole/kişiye özel dünyalar değil)
-- Gündüz/gece döngüsü ve canlı AI durum göstergesiyle desteklenen sürükleyici arayüz
+- Merkezdeki hologram **Fikir Çekirdeği** etrafında kurulu, 6 sabit bölgeye (Fikir, Tasarım, Üretim, Topluluk, Pazar, Başarı) ayrılmış tek parça voxel dünya
+- Şehirde gezdirilebilen bir karakter: joystick ile yürüme, kamera `OrbitControls` ile sürükle-döndür/yakınlaştır
+- **İstanbul saatine göre gerçek zamanlı gündüz/gece döngüsü** — gökyüzü, ışıklandırma ve çekirdek parıltısı saatle birlikte değişir
+- Çekirdeğin canlı durum göstergesi (`Dinliyor` / `Analiz ediyor`) ve NSOSYAL bilgi paneli
+- `EffectComposer` + `UnrealBloomPass` ile ışık hüzmeleri ve gece parıltısı
+- Fikrin Fikir → Tasarım → Üretim → Topluluk → Pazar → Başarı akışı ve Katkı Puanı (KP) ile ödüllendirme — ürünün hedeflediği, [Sonraki Adımlar](#sonraki-adımlar-planlanan)'da işlevselleştirilecek süreç
+- Herkesin aynı anda birlikte bulunduğu tek bir ortak 3B dünya (izole/kişiye özel dünyalar değil) — hedeflenen çok kullanıcılı senkronizasyon
 
 ### Farkımız
 
-Bugünkü sosyal platformların büyük çoğunluğunda bir fikir paylaşılır, tepki alır ve unutulur. Meydan'ı farklı kılan dört temel nokta:
+Bugünkü sosyal platformların büyük çoğunluğunda bir fikir paylaşılır, tepki alır ve unutulur. Meydan'ı farklı kılması hedeflenen dört temel nokta:
 
 | | Klasik Sosyal Platformlar | Meydan |
 |---|---|---|
@@ -63,7 +67,7 @@ Bugünkü sosyal platformların büyük çoğunluğunda bir fikir paylaşılır,
 
 ### Sprint Takibi
 
-Görevler [Issues](../../issues) üzerinde, [Milestones](../../milestones) ile sprint bazlı takip edilir. Etiketler: `sprint`, `ai-katmanı`, `3d-oyun`, `rapor`.
+Görevler [Issues](../../issues) üzerinde, [Milestones](../../milestones) ile sprint bazlı takip edilir. Etiketler: `sprint`, `3d-dünya`, `karakter`, `rapor`.
 
 ---
 
@@ -71,57 +75,47 @@ Görevler [Issues](../../issues) üzerinde, [Milestones](../../milestones) ile s
 
 ### Sprint 1 Notları
 
-Sprint 1 kapsamında ürün fikrinin netleştirilmesi, 6 bölgelik akış mimarisinin tasarlanması ve 3B dünyanın temel iskeletinin kurulması hedeflenmiştir. Bu sprintte ana amaç, dünyanın merkez–uydu (hub-and-spoke) yerleşimini oturtmak, **Fikir** bölgesini çalışır hale getirmek ve geliştirme için gerekli teknik altyapıyı hazırlamaktır.
+Sprint 1 kapsamında ürün fikrinin netleştirilmesi, 6 bölgelik akış mimarisinin tasarlanması ve 3B dünyanın temel iskeletinin (proje kurulumu, sahne/kamera/ışıklandırma) kurulması hedeflenmiştir.
 
 ### Sprint 1 Goal
 
-Sprint 1'in hedefi; 6 bölgenin ada üzerindeki sabit yerleşimini kurmak, TanStack Start + Three.js tabanlı proje iskeletini oluşturmak, AI Fikir Çekirdeği'nin ilk prototipini (Vercel AI SDK + Zod) hazırlamak ve GitHub proje yapısını düzenlemektir.
+Sprint 1'in hedefi; TanStack Start + Three.js tabanlı proje iskeletini kurmak, temel voxel sahne render hattını (kamera, ışıklandırma, `OrbitControls`) çalışır hâle getirmek ve 6 bölgenin yerleşim planını netleştirmektir.
 
 ### Sprint 1 İçin Seçilen Görevler
 
 **To-do**
-- Wireframe / bölge yerleşim planının netleştirilmesi
-- AI Fikir Çekirdeği'nin karar/yönlendirme şemasının (Zod) tasarlanması
-- Product backlog'un oluşturulması
+- Karakter hareketi ve joystick entegrasyonunun tasarlanması
+- İstanbul saatine göre gündüz/gece mantığının planlanması
 
 **In Progress**
-- TanStack Start (React 19 + Vite + Nitro) proje iskeleti
-- Three.js ile voxel/bloklu 3B dünya temeli (InstancedMesh, OrbitControls)
-- **Fikir** bölgesi: fikir paylaşım akışının ilk prototipi
+- 6 bölgenin (Fikir, Tasarım, Üretim, Topluluk, Pazar, Başarı) voxel yerleşim planının çıkarılması
+- Merkez hologram çekirdeğin ilk taslağı
 
 **Complete**
 - GitHub repository açılması
-- 6 bölgelik akış şemasının ve KP mantığının netleştirilmesi
-- Tailwind CSS v4 + Radix UI ile temel arayüz bileşenleri
+- TanStack Start (React 19 + Vite + Nitro) proje iskeleti
+- Tailwind CSS v4 + Radix UI (shadcn tabanlı) ile temel arayüz bileşenleri
+- Three.js temel sahne kurulumu: kamera, ışıklandırma, `OrbitControls`
 
 ### Sprint 1 Ürün Durumu
 
-Sprint 1 sonunda adanın merkez–uydu yerleşimi ve 6 sabit bölgenin temel 3B iskeleti kurulmuştur. Bu sprintte henüz her bölgenin tam işlevi hedeflenmemiştir; asıl amaç, Sprint 2'de geliştirilecek bölge içi etkileşimler için gerekli dünya altyapısını hazırlamaktır.
-
-#### Sprint 1 Ürün Görselleri
-
-<p align="center">
-  <img src="docs/ada_genel_gorunum.png" alt="Meydan — ada genel görünümü, 6 bölge yerleşimi" width="100%" />
-</p>
-<p align="center"><sub>Adanın merkez–uydu yerleşimi: merkezdeki meydandan 6 sabit bölgeye uzanan yollar.</sub></p>
+Sprint 1 sonunda proje iskeleti ve temel 3B sahne render hattı kurulmuştur. 6 bölgenin yerleşim planı netleşmiş, ancak henüz tüm bölgeler voxel olarak inşa edilmemiştir; asıl amaç Sprint 2'de tüm dünyayı inşa etmek için gerekli altyapıyı hazırlamaktır.
 
 ### Sprint 1 Review
 
-Sprint 1 boyunca yapılan işler değerlendirilmiştir. Bölge yerleşiminin ve dünya iskeletinin kurulması olumlu bulunmuştur. Devam eden görevlerin (AI Fikir Çekirdeği şeması, Fikir bölgesi akışı) Sprint 2'ye taşınmasına karar verilmiştir.
+Sprint 1 boyunca yapılan işler değerlendirilmiştir. Proje iskeletinin ve temel render hattının kurulması olumlu bulunmuştur. Karakter hareketi ve gündüz/gece mantığının Sprint 2'ye taşınmasına karar verilmiştir.
 
 Alınan kararlar:
-- 6 bölgenin sabit konumlarda kalmasına, akışın bölgeler arası ışık hatlarıyla görselleştirilmesine karar verilmiştir.
-- AI Fikir Çekirdeği çıktısının baştan Zod şemasıyla tip güvenli tasarlanmasına karar verilmiştir.
-- Sprint 2'de Tasarım, Üretim ve Topluluk bölgelerinin işlevselleştirilmesine odaklanılması kararlaştırılmıştır.
+- 6 bölgenin sabit konumlarda kalmasına, merkezdeki çekirdeğe ışık hatlarıyla bağlanmasına karar verilmiştir.
+- Sprint 2'de tüm bölgelerin voxel olarak inşa edilmesine ve karakter/joystick entegrasyonuna odaklanılması kararlaştırılmıştır.
 
 ### Sprint 1 Retrospective
 
-İlk sprintte dünya mimarisine (grid yapısı, InstancedMesh render stratejisi) beklenenden fazla zaman ayrıldığı görülmüştür. Bu nedenle bölge içi etkileşim mantığının bir sonraki sprinte daha net görev paketleri hâlinde taşınmasına karar verilmiştir.
+İlk sprintte sahne/render mimarisine beklenenden fazla zaman ayrıldığı, bunun karşılığında Sprint 2'nin daha hızlı ilerlemesi için sağlam bir temel oluştuğu değerlendirilmiştir.
 
 Alınan kararlar:
 - Sahne/render mimarisi erken sprintte sağlamlaştırılmalı, sonraki sprintler bunun üzerine katman eklemelidir.
 - Her bölge için görev sorumluluğu net şekilde ayrılmalıdır.
-- Sprint board güncellemeleri daha düzenli tutulmalıdır.
 
 ---
 
@@ -129,29 +123,29 @@ Alınan kararlar:
 
 ### Sprint 2 Notları
 
-Sprint 1'de kurulan dünya iskeleti üzerine, Sprint 2 kapsamında **Tasarım**, **Üretim** ve **Topluluk** bölgelerinin gerçek işlevlere kavuşturulmasına odaklanılmıştır. Bu sprintte planlama aşamasından çıkılıp bölgelerin görsel ve etkileşimsel karşılıkları somutlaştırılmıştır.
+Sprint 1'de kurulan render hattı üzerine, Sprint 2 kapsamında **6 bölgenin tamamının voxel olarak inşası**, karakter/joystick ile gezinme ve İstanbul saatine göre gündüz/gece döngüsüne odaklanılmıştır.
 
 ### Sprint 2 Goal
 
-Sprint 2'nin hedefi; katkı/geliştirme önerisi sunma ve onay akışının (Tasarım), üretim hattı görselleştirmesinin (Üretim) ve geri bildirim/tartışma mekanizmasının (Topluluk) geliştirilmesi; ayrıca Katkı Puanı (KP) veri modelinin ilk sürümünün oluşturulmasıdır.
+Sprint 2'nin hedefi; 6 bölgenin (özellikle Üretim ve Topluluk) voxel dünyada somut karşılıklarını inşa etmek, karakteri joystick ile şehirde gezdirilebilir hâle getirmek ve gerçek zamanlı gündüz/gece döngüsünü çalıştırmaktır.
 
 ### Sprint 2'de Ele Alınan Görevler
 
 **To-do**
-- KP hesaplama algoritmasının detaylandırılması
-- Topluluk bölgesinde tartışma/oylama arayüzü
+- Fikir paylaşım formunun arayüz taslağı
 
 **In Progress**
-- **Tasarım** bölgesi: katkı/geliştirme önerisi sunma ve fikir sahibi onay akışı
-- Katkı Puanı (KP) sisteminin veri modeli
+- NPC'lerin bölgelere yerleştirilmesi ve sahneye canlılık katılması
 
 **Complete**
-- **Üretim** bölgesi: onaylanan tasarımın üretim hattında görselleştirilmesi
-- **Topluluk** bölgesi: merkez çekirdeğe bağlı geri bildirim düğümünün 3B karşılığı
+- **Üretim** ve **Topluluk** bölgelerinin voxel olarak inşası
+- Karakter hareketi ve `Joystick` bileşeniyle gezinme
+- İstanbul saatine göre gerçek zamanlı gündüz/gece döngüsü
+- Merkez hologram çekirdeğin (Fikir Çekirdeği) sahneye entegrasyonu
 
 ### Sprint 2 Ürün Durumu
 
-Sprint 2 sonunda Üretim ve Topluluk bölgeleri, merkez çekirdeğe ışık hatlarıyla bağlı, kendi voxel grid'ine sahip çalışır 3B alanlar hâline gelmiştir. Üretim hattında robotik kollar ve taşıma bantları, Topluluk bölgesinde ise çekirdeğe bağlı bir etkileşim düğümü görselleştirilmiştir.
+Sprint 2 sonunda Üretim ve Topluluk bölgeleri, merkez çekirdeğe ışık hatlarıyla bağlı, kendi voxel yerleşimine sahip gezilebilir 3B alanlar hâline gelmiştir. Karakter joystick ile şehirde dolaştırılabilmekte, gündüz/gece döngüsü İstanbul saatine göre gerçek zamanlı işlemektedir.
 
 #### Sprint 2 Ürün Görselleri
 
@@ -159,30 +153,30 @@ Sprint 2 sonunda Üretim ve Topluluk bölgeleri, merkez çekirdeğe ışık hatl
   <tr>
     <td width="50%">
       <img src="docs/uretim_bolgesi.png" alt="Üretim bölgesi — üretim hattı ve robotik kollar" width="100%" />
-      <p align="center"><b>Üretim</b><br/><sub>Onaylanan tasarımın üretim hattında somut ürüne dönüşümü</sub></p>
+      <p align="center"><b>Üretim</b><br/><sub>Bölgenin voxel dünyadaki somut karşılığı</sub></p>
     </td>
     <td width="50%">
       <img src="docs/topluluk_cekirdegi.png" alt="Topluluk bölgesi — merkez çekirdek ve bağlantı hatları" width="100%" />
-      <p align="center"><b>Topluluk</b><br/><sub>Geri bildirim düğümü, çekirdeğe ışık hatlarıyla bağlı</sub></p>
+      <p align="center"><b>Topluluk</b><br/><sub>Merkez çekirdeğe ışık hatlarıyla bağlı bölge</sub></p>
     </td>
   </tr>
 </table>
 
 ### Sprint 2 Review
 
-Sprint 2 sonunda ekip, Üretim ve Topluluk bölgelerinin somut 3B karşılıklarını birlikte değerlendirmiştir. Sprint 1'de hedeflenen "dünya altyapısı" hedefinin ötesine geçilerek, akışın görsel olarak takip edilebilir hâle geldiği görülmüştür.
+Sprint 2 sonunda ekip, Üretim ve Topluluk bölgelerinin somut 3B karşılıklarını ve karakter gezinme deneyimini birlikte değerlendirmiştir. Sprint 1'de hedeflenen "render altyapısı" hedefinin ötesine geçilerek, dünyanın gezilebilir hâle geldiği görülmüştür.
 
 Alınan kararlar:
-- Bölgeler arası ışık hattı efektinin, aktif veri akışını sezgisel biçimde göstermesi olumlu bulunmuş, Sprint 3'te tüm bölgelere yaygınlaştırılmasına karar verilmiştir.
-- Tasarım bölgesindeki onay akışının Sprint 3'e sarkmasının, KP modelinin netleşmesini beklemesinden kaynaklandığı değerlendirilmiştir.
+- Bölgeler arası ışık hattı efektinin dünyayı bir bütün olarak okunabilir kıldığı olumlu bulunmuş, Sprint 3'te kalan bölgelere (Pazar) ve genel görsel cilaya odaklanılmasına karar verilmiştir.
+- Fikir paylaşımı gibi veri gerektiren özelliklerin, dünya tamamlandıktan sonraki bir aşamaya bırakılmasına karar verilmiştir.
 
 ### Sprint 2 Retrospective
 
-Bölge bazlı görev dağılımının (her bölge = bağımsız bir 3B alan + kendi veri akışı) paralel çalışmayı kolaylaştırdığı görülmüştür. KP hesaplama mantığının erken netleştirilmemesi, Tasarım bölgesindeki onay akışını geciktirmiştir.
+Bölge bazlı görev dağılımının (her bölge = bağımsız bir voxel alan) paralel çalışmayı kolaylaştırdığı görülmüştür. Karakter/joystick entegrasyonunun sahne mimarisiyle uyumlu ilerlediği değerlendirilmiştir.
 
 Alınan kararlar:
-- Veri modeli gerektiren özellikler (KP gibi), bölge görselleştirmesinden önce netleştirilmelidir.
-- Her bölgenin "bitti" sayılması için görsel + veri akışı birlikte tamamlanmalıdır.
+- Görsel/dünya işleri ile veri/backend işleri net şekilde ayrılmalı, karıştırılmamalıdır.
+- Her bölgenin voxel inşası bittiğinde ekip içi kısa bir gözden geçirme yapılmalıdır.
 
 ---
 
@@ -190,27 +184,27 @@ Alınan kararlar:
 
 ### Sprint 3 Notları
 
-Sprint 2 sonunda tespit edilen boşluk giderilmiştir: KP modeli netleştirilerek **Pazar** ve **Başarı** bölgeleri işlevsel hâle getirilmiş, ayrıca dünyanın genel görsel cilası (gündüz/gece döngüsü, bloom efektleri) tamamlanmıştır.
+Sprint 2 sonunda dünyanın büyük kısmı gezilebilir hâle gelmişti; Sprint 3 kapsamında **Pazar** bölgesinin voxel inşası tamamlanmış, ayrıca dünyanın genel görsel cilasına (bloom efektleri, gece ışıklandırması, çekirdek durum animasyonu) odaklanılmıştır.
 
 ### Sprint 3 Goal
 
-Sprint 3'ün hedefi; ürünün paylaşılıp değer kazandığı **Pazar** bölgesinin, KP ile ödüllendirmenin yapıldığı **Başarı** bölgesinin geliştirilmesi ve tüm dünyaya gündüz/gece döngüsü ile görsel cila (bloom, ışıklandırma) eklenerek sunuma hazır hâle getirilmesidir.
+Sprint 3'ün hedefi; **Pazar** bölgesinin voxel dünyada inşa edilmesi, `EffectComposer` + `UnrealBloomPass` ile görsel cilanın tamamlanması, çekirdeğin canlı durum göstergesinin (`Dinliyor` / `Analiz ediyor`) arayüze eklenmesi ve dünyanın sunuma hazır hâle getirilmesidir.
 
 ### Sprint 3'te Tamamlanan İşler
 
 **Done**
-- **Pazar** bölgesi: ürün paylaşımı ve meydan çevresinde birim yerleşimi
-- Gündüz/gece döngüsü ve `EffectComposer` + `UnrealBloomPass` ile görsel cila
-- AI Fikir Çekirdeği durum göstergesinin (`Dinliyor` / `Analiz ediyor`) arayüze eklenmesi
+- **Pazar** bölgesinin meydan çevresinde voxel olarak inşası
+- `EffectComposer` + `UnrealBloomPass` ile ışık hüzmeleri ve gece parıltısı
+- Çekirdeğin canlı durum göstergesi (`Dinliyor` / `Analiz ediyor`) — şu an istemci tarafında simüle edilen bir görsel/metin döngüsü
 - Uçtan uca TypeScript tip güvenliği taraması
 
 **Devam Eden**
-- **Başarı** bölgesi: KP ödüllendirme ekranının detaylandırılması
+- **Başarı** bölgesinin KP ödüllendirme ekranıyla detaylandırılması
 - Sunum/rapor hazırlığı
 
 ### Sprint 3 Ürün Durumu
 
-Sprint 3 sonunda dünya, planlama aşamasından çıkıp uçtan uca gezilebilir, gündüz/gece döngüsüne sahip bir prototip hâline gelmiştir. Pazar bölgesi meydan çevresinde yerleşik birimleriyle görselleştirilmiş, dünya geneline bloom efektleriyle görsel cila eklenmiştir.
+Sprint 3 sonunda dünya, uçtan uca gezilebilir, gündüz/gece döngüsüne ve görsel cilaya sahip bir prototip hâline gelmiştir. Pazar bölgesi meydan çevresinde voxel yerleşimiyle görselleştirilmiş, çekirdeğin durum göstergesi arayüze eklenmiştir. Fikir paylaşımı, onay akışı ve KP hesaplaması bu aşamada henüz gerçek bir veri katmanına bağlı değildir (bkz. [Sonraki Adımlar](#sonraki-adımlar-planlanan)).
 
 #### Sprint 3 Ürün Görselleri
 
@@ -218,7 +212,7 @@ Sprint 3 sonunda dünya, planlama aşamasından çıkıp uçtan uca gezilebilir,
   <tr>
     <td width="50%">
       <img src="docs/pazar_bolgesi.png" alt="Pazar bölgesi — meydan çevresinde birim yerleşimi" width="100%" />
-      <p align="center"><b>Pazar</b><br/><sub>Ürünün paylaşılıp gerçek değer kazandığı alan</sub></p>
+      <p align="center"><b>Pazar</b><br/><sub>Meydan çevresinde voxel olarak inşa edilen bölge</sub></p>
     </td>
     <td width="50%">
       <img src="docs/ada_gece_gorunum.png" alt="Meydan — gece modunda ada genel görünümü, bloom efektleri" width="100%" />
@@ -229,65 +223,84 @@ Sprint 3 sonunda dünya, planlama aşamasından çıkıp uçtan uca gezilebilir,
 
 ### Sprint 3 Review
 
-Sprint 3 sonunda ekip, tamamlanan dünyayı uçtan uca birlikte değerlendirmiştir. Sprint 2'de hedeflenen "bölgelerin işlevselleştirilmesi" hedefine ulaşılmış, bunun ötesinde dünya geneline görsel cila eklenerek sunuma hazır bir aşamaya getirilmiştir.
+Sprint 3 sonunda ekip, tamamlanan dünyayı uçtan uca birlikte değerlendirmiştir. Sprint 2'de hedeflenen "dünyanın gezilebilir hâle gelmesi" hedefine ulaşılmış, bunun ötesinde görsel cila eklenerek dünya sunuma hazır bir aşamaya getirilmiştir.
 
 Alınan kararlar:
-- Başarı bölgesindeki KP ödüllendirme ekranının bir sonraki iterasyonda detaylandırılmasına karar verilmiştir.
-- Gündüz/gece döngüsünün, aktif veri akışını vurgulayan bir sunum aracı olarak kullanılmasına karar verilmiştir.
+- Fikir paylaşımı, onay akışı ve KP sisteminin gerçek bir veri katmanına bağlanmasının bir sonraki geliştirme döngüsüne bırakılmasına karar verilmiştir.
+- Gündüz/gece döngüsünün ve çekirdek animasyonunun, sunumlarda dünyanın "canlı" hissettirilmesi için kullanılmasına karar verilmiştir.
 
 ### Sprint 3 Retrospective
 
-Görsel cilanın (bloom, gece ışıklandırması) sona bırakılması, dünyanın "tamamlanmış" hissini geç ortaya çıkarmıştır. Bir sonraki proje için görsel cila adımlarının daha erken, paralel olarak planlanması gerektiği değerlendirilmiştir.
+Görsel dünyanın (6 bölge, gündüz/gece, bloom) veri katmanından (fikir paylaşımı, KP) önce tamamlanmasının, ürünü erken aşamada somut ve gösterilebilir kıldığı; ancak "Farkımız" bölümünde anlatılan katkı/onay/KP mekanizmalarının henüz gerçek işlevler olmadığı, bunun net şekilde belirtilmesi gerektiği değerlendirilmiştir.
 
 Alınan kararlar:
-- Görsel cila görevleri, işlevsel geliştirmeyle paralel sprintlere dağıtılmalıdır.
-- Ürünün iddia ettiği akışın (Fikir → Başarı) her adımının 3B karşılığı olup olmadığı düzenli olarak gözden geçirilmelidir.
+- Ürünün iddia ettiği akışın (Fikir → Başarı) hangi adımlarının gerçekten kodda karşılığı olduğu README'de açıkça belirtilmelidir.
+- Bir sonraki sprintte veri katmanına (fikir paylaşımı, onay akışı, KP) öncelik verilmelidir.
 
 ---
 
 ## Kullanılan Teknolojiler ve Mimari
 
+### Klasörler
+
+- `src/routes/` — TanStack Start dosya tabanlı route'lar (şu an tek route: `/`)
+- `src/components/` — `IdeaSquare.tsx` (ana 3B sahne bileşeni), `Joystick.tsx` (karakter kontrolü), `ui/` (shadcn tabanlı arayüz bileşenleri)
+- `src/lib/` — `voxel-world.ts` (voxel dünya üretimi: 6 bölge, çekirdek, NPC'ler), `istanbul-time.ts` (gündüz/gece saat mantığı), `seascape.ts` (ada çevresindeki deniz)
+
 ### Mimari Genel Bakış
 
 ```
-┌─────────────────────────────┐        /api/*        ┌──────────────────────────┐
-│   Meydan İstemcisi           │  ───────────────────▶ │   AI Fikir Çekirdeği      │
-│   (Three.js 3B Dünya + UI)   │   TanStack Start       │   (Vercel AI SDK + Zod)   │
-│   6 bölge · OrbitControls    │   server routes        │   yapılandırılmış çıktı   │
-└──────────────┬───────────────┘                       └──────────────┬───────────┘
-               │                                                       │
-               │ Kullanıcı (tarayıcı)                                  ▼
-               ▼                                          ┌──────────────────────────┐
-     ┌──────────────────┐                                 │   Süreç & KP Katmanı      │
-     │  TanStack Start    │  ──────────────────────────▶  │   Fikir→Tasarım→Üretim→   │
-     │  (React 19 + Vite   │       bölge durumu             │   Topluluk→Pazar→Başarı   │
-     │   + Nitro)          │                                │   Katkı Puanı (KP)        │
-     └──────────────────┘                                 └──────────────────────────┘
+┌──────────────────────────────┐
+│  TanStack Start (SSR kabuk)   │
+│  src/routes/index.tsx          │
+└───────────────┬────────────────┘
+                │ render
+                ▼
+┌──────────────────────────────────────────────┐
+│  IdeaSquare.tsx — Three.js sahnesi             │
+│  OrbitControls · EffectComposer+UnrealBloom    │
+└───────┬─────────────────┬──────────────┬──────┘
+        │                 │              │
+        ▼                 ▼              ▼
+ voxel-world.ts     istanbul-time.ts   Joystick.tsx
+ 6 bölge + çekirdek   gündüz/gece        karakter
+ + NPC üretimi          saat mantığı      girdisi
 ```
 
-İstek akışı: Kullanıcı 3B dünyada bir bölgeye girer → istemci Three.js sahnesini render eder (voxel grid + `InstancedMesh`) → **Fikir** bölgesinde bir fikir paylaşıldığında TanStack Start server route'u isteği AI Fikir Çekirdeği'ne iletir → Vercel AI SDK, Zod şemasına uygun yapılandırılmış bir analiz/yönlendirme çıktısı üretir → sonuç, fikri bir sonraki bölgeye (Tasarım) yönlendirir ve arayüzdeki canlı durum paneli (`Dinliyor` / `Analiz ediyor`) güncellenir. Bölgeler arası her geçişte Katkı Puanı (KP) katmanı güncellenir.
+`voxel-world.ts`, 6 bölgeyi (`REGIONS`: Fikir, Tasarım, Üretim, Topluluk, Pazar, Başarı) ve merkezdeki hologram çekirdeği (`buildCore`) prosedürel olarak üretir; `IdeaSquare.tsx` bu veriyi Three.js sahnesine render eder, `istanbul-time.ts`'den gelen saate göre gündüz/gece geçişini uygular ve `Joystick.tsx` üzerinden gelen girdiyle karakteri hareket ettirir.
 
-### İstemci / Dünya
+### İstemci
 
-- **TanStack Start** (React 19 + Vite + Nitro) — tam-stack framework
-- **Three.js** — voxel/bloklu 3B dünya (`InstancedMesh`, `OrbitControls`, `EffectComposer` + `UnrealBloomPass`)
-- **Tailwind CSS v4 + Radix UI** — arayüz bileşenleri
+- **TanStack Start** (React 19 + Vite + Nitro) — SSR uygulama kabuğu
+- **Three.js** — prosedürel voxel dünya üretimi, `OrbitControls`, `EffectComposer` + `UnrealBloomPass`
+- **Tailwind CSS v4 + Radix UI** (shadcn tabanlı) — arayüz bileşenleri
 - **TypeScript** — uçtan uca tip güvenliği
 
-### Yapay Zekâ Katmanı
+### Şu An Simüle Edilen Katman
 
-- **Vercel AI SDK + Zod** — AI Fikir Çekirdeği'nin yapılandırılmış (tip güvenli) çıktı üretimi
-- Çekirdeğin canlı durumu (`Dinliyor` / `Analiz ediyor`), arayüzdeki NSOSYAL paneline anlık yansıtılır
+Çekirdeğin `Dinliyor` / `Analiz ediyor` durumu şu an istemci tarafında görsel bir renk/metin animasyon döngüsüdür; gerçek bir yapay zekâ/LLM entegrasyonu henüz bağlanmamıştır. Fikir paylaşımı, katkı/onay akışı ve Katkı Puanı (KP) hesaplaması da aynı şekilde ürünün hedeflediği ama henüz kodda karşılığı olmayan özelliklerdir.
 
-## Kurulum (Planlanan)
+## Sonraki Adımlar (Planlanan)
 
-Proje iskeleti TanStack Start üzerine kurulacak şekilde planlanmıştır:
+- Fikir paylaşım formu ve backend'e bağlı bir gönderim akışı
+- Çekirdek durumunu gerçek bir yapay zekâ analiz motoruna (LLM tabanlı) bağlamak
+- Katkı/onay akışı ve Katkı Puanı (KP) hesaplama sisteminin veri katmanı
+- Çoklu kullanıcı senkronizasyonu — herkesin gerçekten "aynı anda" aynı dünyada olduğu gerçek zamanlı katman
+
+## Kurulum
 
 ```bash
-npm create @tanstack/start@latest meydan
-cd meydan
+git clone https://github.com/kayabetul744/KAYALARR-MEYDAN.git
+cd KAYALARR-MEYDAN
 npm install
-npm run dev
+npm run dev       # http://localhost:5173
+```
+
+```bash
+npm run build      # üretim derlemesi
+npm run preview    # üretim derlemesini yerelde önizleme
+npm run lint        # ESLint
+npm run format       # Prettier
 ```
 
 ## Ekip
