@@ -29,7 +29,7 @@ Bugünkü sosyal platformlarda bir fikir paylaşılır, beğeni/yorum alır ve k
 | 5 | **Pazar** | Ürün paylaşılır, gerçek değer kazanmaya başlar |
 | 6 | **Başarı** | Fikir sahibi + tüm katkı verenler Katkı Puanı (KP) ile ödüllenir |
 
-Fikrin sahibi her aşamada sahip kalır; katkı verenler kendi KP'sini kendi emeğiyle kazanır. Bu akışın 3B dünya karşılığı bugün itibarıyla **gezilebilir** durumda; fikir gönderimi, onay ve KP hesaplaması ise henüz koda bağlanmamış, aşağıdaki [Sonraki Adımlar](#sonraki-adımlar-planlanan) bölümünde planlanan işlevlerdir.
+Fikrin sahibi her aşamada sahip kalır; katkı verenler kendi KP'sini kendi emeğiyle kazanır. Bu akışın 3B dünya karşılığı bugün itibarıyla **gezilebilir** durumda; **fikir gönderimi ve AI Fikir Çekirdeği'nin bölge yönlendirmesi artık gerçek** (bkz. [Sprint 4](#sprint-4)). Katkı/onay akışı ve kalıcı bir Katkı Puanı defteri ise henüz koda bağlanmamış, aşağıdaki [Sonraki Adımlar](#sonraki-adımlar-planlanan) bölümünde planlanan işlevlerdir.
 
 <p align="center">
   <img src="docs/ada_genel_gorunum.png" alt="Meydan — ada genel görünümü, 6 bölge ve merkez çekirdek" width="100%" />
@@ -43,7 +43,8 @@ Fikrin sahibi her aşamada sahip kalır; katkı verenler kendi KP'sini kendi eme
 - **İstanbul saatine göre gerçek zamanlı gündüz/gece döngüsü** — gökyüzü, ışıklandırma ve çekirdek parıltısı saatle birlikte değişir
 - Çekirdeğin canlı durum göstergesi (`Dinliyor` / `Analiz ediyor`) ve NSOSYAL bilgi paneli
 - `EffectComposer` + `UnrealBloomPass` ile ışık hüzmeleri ve gece parıltısı
-- Fikrin Fikir → Tasarım → Üretim → Topluluk → Pazar → Başarı akışı ve Katkı Puanı (KP) ile ödüllendirme — ürünün hedeflediği, [Sonraki Adımlar](#sonraki-adımlar-planlanan)'da işlevselleştirilecek süreç
+- **"Fikrini Paylaş" paneli:** serbest metni AI Fikir Çekirdeği'ne gönderir; çekirdek fikri altı bölgeden birine yönlendirir, bir başlık/tema/renk ve önerilen Katkı Puanı üretir, sonuç doğru bölgenin üstünde beliren bir hologram katkı yapısı olarak 3B dünyaya işlenir
+- Fikrin Tasarım → Üretim → Topluluk → Pazar → Başarı adımlarındaki katkı/onay akışı ve kalıcı KP defteri — ürünün hedeflediği, [Sonraki Adımlar](#sonraki-adımlar-planlanan)'da işlevselleştirilecek süreç
 - Herkesin aynı anda birlikte bulunduğu tek bir ortak 3B dünya (izole/kişiye özel dünyalar değil) — hedeflenen çok kullanıcılı senkronizasyon
 
 ### Farkımız
@@ -67,7 +68,7 @@ Bugünkü sosyal platformların büyük çoğunluğunda bir fikir paylaşılır,
 
 ### Sprint Takibi
 
-Görevler [Issues](../../issues) üzerinde, [Milestones](../../milestones) ile sprint bazlı takip edilir. Etiketler: `sprint`, `3d-dünya`, `karakter`, `rapor`.
+Görevler [Issues](../../issues) üzerinde, [Milestones](../../milestones) ile sprint bazlı takip edilir. Etiketler: `sprint`, `3d-dünya`, `karakter`, `ai-katmanı`, `rapor`.
 
 ---
 
@@ -239,27 +240,70 @@ Alınan kararlar:
 
 ---
 
+## Sprint 4
+
+### Sprint 4 Notları
+
+Sprint 3 sonunda tespit edilen en önemli boşluk, "Farkımız" bölümünde anlatılan AI Fikir Çekirdeği'nin gerçekte sadece görsel bir animasyon olmasıydı. Sprint 4 kapsamında bu boşluk kapatıldı: fikir gönderimi ve bölge yönlendirmesi artık uçtan uca çalışan, gerçek bir yapay zekâ katmanına bağlı.
+
+### Sprint 4 Goal
+
+Sprint 4'ün hedefi; teknik rapordaki AI akışını (serbest metin → yapılandırılmış, Zod ile doğrulanmış plan → voxel motoruna parametre) koda geçirmek, bunu bir arayüz paneliyle kullanıcıya açmak ve AI servisi kullanılamadığında oyunun asla kırılmamasını sağlayan deterministik bir yedek mekanizma kurmaktır.
+
+### Sprint 4'te Tamamlanan İşler
+
+**Done**
+- `ideaPlanSchema` (Zod): bölge, tema, başlık (≤6 kelime), `#rrggbb` renk, önerilen Katkı Puanı ve 14-26 öğelik yapı listesini (8-88 yerel koordinat aralığında) doğrulayan şema
+- `analyzeIdea` sunucu fonksiyonu (`createServerFn`): Vercel AI SDK'nın `generateObject`'i ve `@ai-sdk/google` sağlayıcısıyla gerçek bir Gemini modeline (`GOOGLE_GENERATIVE_AI_API_KEY` tanımlıysa) bağlanır; istemci paketine AI SDK kodu hiç dahil edilmez (build çıktısı ile doğrulandı)
+- `fallbackPlan`: anahtar tanımlı değilse veya model çağrısı başarısız/zaman aşımına uğrarsa devreye giren, anahtar kelime tabanlı bölge tahmini yapan deterministik üretici — aynı metin her zaman aynı planı üretir
+- `planToVoxels`: doğrulanmış planı, doğru bölgenin üstünde çatıların üzerinde süzülen bir hologram katkı yapısına (`Voxel[]`) çevirir; çakışma riski olmadan sahneye eklenir
+- **"Fikrini Paylaş"** arayüz paneli (`IdeaSquare.tsx`): metin girişi, çekirdek durumu, sonuç kartı (bölge/tema/renk/KP) ve "yapay zekâ ile mi yoksa deterministik plan ile mi analiz edildi" şeffaflığı
+- Sahneye dünyanın kamera/karakter durumunu bozmadan yeni katkı yapıları ekleyen ayrı bir React effect'i (`sceneRef` + `contributions`)
+
+### Sprint 4 Ürün Durumu
+
+Sprint 4 sonunda bir kullanıcı gerçekten fikrini yazıp gönderebiliyor; AI Fikir Çekirdeği (anahtar tanımlıysa Gemini, değilse deterministik plan) fikri analiz edip doğru bölgeye yönlendiriyor ve sonuç, o bölgenin üstünde beliren yeni bir hologram yapısı olarak 3B dünyaya işleniyor. Bu, `npm run build` çıktısında AI SDK kodunun yalnızca sunucu paketinde yer aldığı ve tarayıcıda üç ayrı fikir gönderiminin doğru bölge/renk/koordinatlarla sahneye eklendiği (konsol izleriyle) doğrulanmıştır. Katkı/onay akışı ve kalıcı bir KP defteri henüz bu kapsamda değildir.
+
+### Sprint 4 Review
+
+Sprint 4 sonunda ekip, artık gerçekten çalışan bir AI Fikir Çekirdeği'ni birlikte test etmiştir. Sprint 3'ün retrospective'inde alınan "iddia edilen ile kodda karşılığı olan net ayrılmalı" kararı doğrultusunda, README'deki ilgili bölümler de güncellenmiştir.
+
+Alınan kararlar:
+- Deterministik fallback'in varlığı, AI anahtarı olmadan da demo/jüri gösteriminin güvenilir şekilde yapılabilmesini sağladığı için kalıcı bir tasarım kararı olarak korunacaktır.
+- Bir sonraki sprintte katkı/onay akışı ve kalıcı KP defterine öncelik verilmesine karar verilmiştir.
+
+### Sprint 4 Retrospective
+
+TanStack Start'ın import-protection kuralının `**/server/**` desenini dosya yoluna göre kör bir şekilde uyguladığı (içeriğin `createServerFn` olup olmadığına bakmaksızın) sprint içinde öğrenilen önemli bir teknik detaydır; sunucu fonksiyonları bu yüzden `src/lib/` altında, sıradan dosya adlarıyla tutulmuştur.
+
+Alınan kararlar:
+- Framework'e özgü konvansiyonlar (klasör adlandırma, import-protection kuralları) varsayılmadan önce gerçek bir build ile doğrulanmalıdır.
+- Yeni bir dış servis entegrasyonu eklenirken, önce "servis yokken ne olur?" sorusunun cevabı (fallback) tasarlanmalıdır.
+
+---
+
 ## Kullanılan Teknolojiler ve Mimari
 
 ### Klasörler
 
 - `src/routes/` — TanStack Start dosya tabanlı route'lar (şu an tek route: `/`)
-- `src/components/` — `IdeaSquare.tsx` (ana 3B sahne bileşeni), `Joystick.tsx` (karakter kontrolü), `ui/` (shadcn tabanlı arayüz bileşenleri)
-- `src/lib/` — `voxel-world.ts` (voxel dünya üretimi: 6 bölge, çekirdek, NPC'ler), `istanbul-time.ts` (gündüz/gece saat mantığı), `seascape.ts` (ada çevresindeki deniz)
+- `src/components/` — `IdeaSquare.tsx` (ana 3B sahne bileşeni + "Fikrini Paylaş" paneli), `Joystick.tsx` (karakter kontrolü), `ui/` (shadcn tabanlı arayüz bileşenleri)
+- `src/lib/` — `voxel-world.ts` (voxel dünya üretimi: 6 bölge, çekirdek, NPC'ler), `istanbul-time.ts` (gündüz/gece saat mantığı), `seascape.ts` (ada çevresindeki deniz), `idea-core.ts` (Zod şeması, deterministik fallback, plan→voxel dönüşümü — izomorfik), `idea-core-ai.ts` (AI Fikir Çekirdeği'nin `createServerFn` sunucu fonksiyonu — yalnızca sunucuda çalışır)
 
 ### Mimari Genel Bakış
 
 ```
-┌──────────────────────────────┐
-│  TanStack Start (SSR kabuk)   │
-│  src/routes/index.tsx          │
-└───────────────┬────────────────┘
-                │ render
-                ▼
-┌──────────────────────────────────────────────┐
-│  IdeaSquare.tsx — Three.js sahnesi             │
-│  OrbitControls · EffectComposer+UnrealBloom    │
-└───────┬─────────────────┬──────────────┬──────┘
+┌──────────────────────────────┐        analyzeIdea()        ┌──────────────────────────────┐
+│  TanStack Start (SSR kabuk)   │  ───────────────────────────▶│  idea-core-ai.ts (sunucu)      │
+│  src/routes/index.tsx          │      RPC (createServerFn)    │  generateObject + google()     │
+└───────────────┬────────────────┘                              │  → ideaPlanSchema (Zod)        │
+                │ render                                        └───────────────┬────────────────┘
+                ▼                                                                │ başarısız/anahtar yok
+┌──────────────────────────────────────────────┐                                ▼
+│  IdeaSquare.tsx — Three.js sahnesi             │                 ┌────────────────────────────┐
+│  OrbitControls · EffectComposer+UnrealBloom    │◀── contribution ─│  idea-core.ts: fallbackPlan  │
+│  "Fikrini Paylaş" paneli                       │   (planToVoxels) │  (izomorfik, deterministik)  │
+└───────┬─────────────────┬──────────────┬──────┘                 └────────────────────────────┘
         │                 │              │
         ▼                 ▼              ▼
  voxel-world.ts     istanbul-time.ts   Joystick.tsx
@@ -267,7 +311,7 @@ Alınan kararlar:
  + NPC üretimi          saat mantığı      girdisi
 ```
 
-`voxel-world.ts`, 6 bölgeyi (`REGIONS`: Fikir, Tasarım, Üretim, Topluluk, Pazar, Başarı) ve merkezdeki hologram çekirdeği (`buildCore`) prosedürel olarak üretir; `IdeaSquare.tsx` bu veriyi Three.js sahnesine render eder, `istanbul-time.ts`'den gelen saate göre gündüz/gece geçişini uygular ve `Joystick.tsx` üzerinden gelen girdiyle karakteri hareket ettirir.
+`voxel-world.ts`, 6 bölgeyi (`REGIONS`: Fikir, Tasarım, Üretim, Topluluk, Pazar, Başarı) ve merkezdeki hologram çekirdeği (`buildCore`) prosedürel olarak üretir; `IdeaSquare.tsx` bu veriyi Three.js sahnesine render eder, `istanbul-time.ts`'den gelen saate göre gündüz/gece geçişini uygular ve `Joystick.tsx` üzerinden gelen girdiyle karakteri hareket ettirir. Kullanıcı bir fikir gönderdiğinde `analyzeIdea` sunucu fonksiyonu çağrılır; sonuç (AI'dan ya da fallback'ten) `planToVoxels` ile bölgenin üstünde süzülen bir hologram katkı yapısına çevrilip, dünyanın ana kurulumunu yeniden başlatmadan sahneye eklenir.
 
 ### İstemci
 
@@ -276,16 +320,19 @@ Alınan kararlar:
 - **Tailwind CSS v4 + Radix UI** (shadcn tabanlı) — arayüz bileşenleri
 - **TypeScript** — uçtan uca tip güvenliği
 
-### Şu An Simüle Edilen Katman
+### Yapay Zekâ Katmanı (Sprint 4)
 
-Çekirdeğin `Dinliyor` / `Analiz ediyor` durumu şu an istemci tarafında görsel bir renk/metin animasyon döngüsüdür; gerçek bir yapay zekâ/LLM entegrasyonu henüz bağlanmamıştır. Fikir paylaşımı, katkı/onay akışı ve Katkı Puanı (KP) hesaplaması da aynı şekilde ürünün hedeflediği ama henüz kodda karşılığı olmayan özelliklerdir.
+- **Vercel AI SDK (`generateObject`) + `@ai-sdk/google`** — `GOOGLE_GENERATIVE_AI_API_KEY` tanımlıysa gerçek bir Gemini modeline (`gemini-2.5-flash`, `MEYDAN_GEMINI_MODEL` ile değiştirilebilir) bağlanır
+- **Zod (`ideaPlanSchema`)** — model çıktısını bölge/tema/başlık/renk/KP/yapı listesi şemasına zorlar; şema dışı çıktı asla oyun motoruna parametre olamaz
+- **Deterministik `fallbackPlan`** — anahtar tanımlı değilse veya çağrı başarısız/zaman aşımına uğrarsa devreye girer; anahtar kelime tabanlı bölge tahmini yapar, aynı metin için her zaman aynı planı üretir
+- Çekirdeğin `Dinliyor` / `Analiz ediyor` ambiyans döngüsü hâlâ görsel bir animasyondur; "Fikrini Paylaş" panelindeki analiz ise artık gerçek bir sunucu çağrısıdır (AI ya da fallback kaynağı arayüzde şeffafça belirtilir)
 
 ## Sonraki Adımlar (Planlanan)
 
-- Fikir paylaşım formu ve backend'e bağlı bir gönderim akışı
-- Çekirdek durumunu gerçek bir yapay zekâ analiz motoruna (LLM tabanlı) bağlamak
-- Katkı/onay akışı ve Katkı Puanı (KP) hesaplama sisteminin veri katmanı
+- Fikre katkı/geliştirme önerisi sunma ve fikir sahibinin onay akışı
+- Katkı Puanı (KP) için kalıcı bir defter/veritabanı katmanı (şu an her öneri anlık üretiliyor, saklanmıyor)
 - Çoklu kullanıcı senkronizasyonu — herkesin gerçekten "aynı anda" aynı dünyada olduğu gerçek zamanlı katman
+- İçerik moderasyonu / uygunsuz metin filtreleme katmanı
 
 ## Kurulum
 
@@ -302,6 +349,16 @@ npm run preview    # üretim derlemesini yerelde önizleme
 npm run lint        # ESLint
 npm run format       # Prettier
 ```
+
+### AI Fikir Çekirdeği'ni etkinleştirme (isteğe bağlı)
+
+`.env.example` dosyasını `.env` olarak kopyalayıp `GOOGLE_GENERATIVE_AI_API_KEY` değerini girin:
+
+```bash
+cp .env.example .env
+```
+
+Anahtar tanımlanmazsa (veya çağrı başarısız olursa) uygulama otomatik olarak deterministik `fallbackPlan`'a geçer — AI anahtarı olmadan da tam olarak çalışır.
 
 ## Ekip
 

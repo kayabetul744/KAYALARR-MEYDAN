@@ -35,8 +35,15 @@ import {
 
 import { istanbulClock, type IstanbulClock } from "@/lib/istanbul-time";
 import { createSeascape } from "@/lib/seascape";
+import { planToVoxels, type IdeaAnalysis } from "@/lib/idea-core";
+import { analyzeIdea } from "@/lib/idea-core-ai";
 import { Joystick } from "@/components/Joystick";
-import { Sun, Moon, Clock, Footprints, Eye, ChevronsUp, Info } from "lucide-react";
+import { Sun, Moon, Clock, Footprints, Eye, ChevronsUp, Info, Sparkles, X } from "lucide-react";
+
+interface Contribution {
+  id: string;
+  voxels: Voxel[];
+}
 
 /** N logosunu tuvale çizip doku olarak üretir (bulut varlığı yerel ortamda çözülmediği için) */
 function makeLogoTexture(): THREE.CanvasTexture {
@@ -310,9 +317,19 @@ interface SceneProps {
   onCoreState: (name: string) => void;
   onCamDist: (d: number) => void;
   onZone: (name: string | null) => void;
+  contributions: Contribution[];
 }
 
-function Scene({ theme, mode, moveRef, jumpRef, onCoreState, onCamDist, onZone }: SceneProps) {
+function Scene({
+  theme,
+  mode,
+  moveRef,
+  jumpRef,
+  onCoreState,
+  onCamDist,
+  onZone,
+  contributions,
+}: SceneProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const modeRef = useRef<Mode>(mode);
   modeRef.current = mode;
@@ -322,6 +339,8 @@ function Scene({ theme, mode, moveRef, jumpRef, onCoreState, onCamDist, onZone }
   distCb.current = onCamDist;
   const zoneCb = useRef(onZone);
   zoneCb.current = onZone;
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const addedContributionsRef = useRef<Set<string>>(new Set());
 
 
 
@@ -344,6 +363,8 @@ function Scene({ theme, mode, moveRef, jumpRef, onCoreState, onCamDist, onZone }
     host.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
+    sceneRef.current = scene;
+    addedContributionsRef.current = new Set();
     scene.background = new THREE.Color(T.bg);
     scene.fog = new THREE.FogExp2(T.fog, T.fogDensity);
 
@@ -1119,8 +1140,23 @@ function Scene({ theme, mode, moveRef, jumpRef, onCoreState, onCamDist, onZone }
         }
       });
       host.removeChild(renderer.domElement);
+      sceneRef.current = null;
     };
   }, [theme, moveRef, jumpRef]);
+
+  /* Fikir Çekirdeği'nin ürettiği katkı yapılarını sahneye ekle — dünyanın
+     ana kurulumunu (kamera/karakter konumu dahil) yeniden başlatmadan. */
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    for (const contribution of contributions) {
+      if (addedContributionsRef.current.has(contribution.id)) continue;
+      addedContributionsRef.current.add(contribution.id);
+      const group = instanceGroup(contribution.voxels, true, theme);
+      group.name = `contribution-${contribution.id}`;
+      scene.add(group);
+    }
+  }, [contributions, theme]);
 
 
   return <div ref={hostRef} className="h-full w-full" />;
@@ -1146,6 +1182,13 @@ export function IdeaSquare() {
   const moveRef = useRef({ x: 0, y: 0 });
   const jumpRef = useRef(false);
 
+  const [contributions, setContributions] = useState<Contribution[]>([]);
+  const [ideaOpen, setIdeaOpen] = useState(false);
+  const [ideaText, setIdeaText] = useState("");
+  const [ideaBusy, setIdeaBusy] = useState(false);
+  const [ideaResult, setIdeaResult] = useState<IdeaAnalysis | null>(null);
+  const [ideaError, setIdeaError] = useState<string | null>(null);
+
   useEffect(() => {
     const id = window.setInterval(() => setClock(istanbulClock()), 30_000);
     return () => window.clearInterval(id);
@@ -1164,6 +1207,30 @@ export function IdeaSquare() {
     });
   }, []);
 
+  const submitIdea = useCallback(async () => {
+    const text = ideaText.trim();
+    if (text.length < 3) {
+      setIdeaError("Fikrini biraz daha uzun yaz.");
+      return;
+    }
+    setIdeaBusy(true);
+    setIdeaError(null);
+    try {
+      const analysis = await analyzeIdea({ data: text });
+      setIdeaResult(analysis);
+      setContributions((prev) => [
+        ...prev,
+        { id: `${Date.now()}-${prev.length}`, voxels: planToVoxels(analysis.plan) },
+      ]);
+    } catch (err) {
+      setIdeaError(
+        err instanceof Error ? err.message : "Çekirdek şu anda analiz edemedi, tekrar dene.",
+      );
+    } finally {
+      setIdeaBusy(false);
+    }
+  }, [ideaText]);
+
 
   return (
     <div className="relative h-screen w-full touch-none">
@@ -1176,6 +1243,7 @@ export function IdeaSquare() {
         onCoreState={onCoreState}
         onZone={onZone}
         onCamDist={onCamDist}
+        contributions={contributions}
       />
 
       {/* Üst bilgi paneli */}
@@ -1279,6 +1347,14 @@ export function IdeaSquare() {
         )}
 
         <div className="flex flex-col items-end gap-2">
+          <button
+            onClick={() => setIdeaOpen(true)}
+            aria-label="Fikrini paylaş"
+            className="flex items-center gap-2 rounded-2xl border border-border/40 bg-card/80 px-4 py-2.5 text-sm font-semibold text-card-foreground shadow-lg backdrop-blur-md transition-transform hover:scale-[1.03]"
+          >
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="hidden sm:inline">Fikrini Paylaş</span>
+          </button>
           {mode === "walk" && (
             <>
               <div className="rounded-2xl border border-border/40 bg-card/70 px-4 py-2 text-xs text-muted-foreground shadow-lg backdrop-blur-md">
@@ -1308,6 +1384,82 @@ export function IdeaSquare() {
           </button>
         </div>
       </div>
+
+      {/* Fikir paylaşım paneli: metni AI Fikir Çekirdeği'ne gönderir */}
+      {ideaOpen && (
+        <div className="pointer-events-auto absolute inset-0 z-20 flex items-center justify-center bg-background/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border/40 bg-card text-card-foreground shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-border/40 px-5 py-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
+                  AI Fikir Çekirdeği
+                </p>
+                <p className="text-sm font-semibold leading-tight">Fikrini paylaş</p>
+              </div>
+              <button
+                onClick={() => setIdeaOpen(false)}
+                aria-label="Kapat"
+                className="shrink-0 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-accent"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 px-5 py-4">
+              <textarea
+                value={ideaText}
+                onChange={(e) => setIdeaText(e.target.value)}
+                placeholder="Aklındaki fikri birkaç cümleyle yaz…"
+                rows={4}
+                maxLength={2000}
+                className="w-full resize-none rounded-xl border border-border/40 bg-background/60 p-3 text-sm text-foreground outline-none focus:border-primary"
+              />
+
+              {ideaError && <p className="text-xs text-destructive">{ideaError}</p>}
+
+              <button
+                onClick={submitIdea}
+                disabled={ideaBusy || ideaText.trim().length < 3}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity disabled:opacity-50"
+              >
+                {ideaBusy ? "Çekirdek analiz ediyor…" : "Çekirdeğe gönder"}
+              </button>
+
+              {ideaResult && (
+                <div className="rounded-xl border border-border/40 bg-background/50 p-3 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-full"
+                      style={{ background: ideaResult.plan.renk }}
+                    />
+                    <span className="font-semibold text-card-foreground">
+                      {ideaResult.plan.baslik}
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-muted-foreground">
+                    Bölge:{" "}
+                    <span className="font-medium text-card-foreground">
+                      {ideaResult.plan.bolge}
+                    </span>{" "}
+                    · Tema: {ideaResult.plan.tema}
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    Önerilen katkı puanı:{" "}
+                    <span className="font-medium text-card-foreground">
+                      {ideaResult.plan.onerilenKatkiPuani}
+                    </span>
+                  </p>
+                  <p className="mt-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                    {ideaResult.source === "ai"
+                      ? "Yapay zekâ ile analiz edildi"
+                      : "Deterministik plana geçildi (AI kullanılamadı)"}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
