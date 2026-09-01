@@ -350,16 +350,6 @@ npm run lint        # ESLint
 npm run format       # Prettier
 ```
 
-### AI Fikir Çekirdeği'ni etkinleştirme (isteğe bağlı)
-
-`.env.example` dosyasını `.env` olarak kopyalayıp `GOOGLE_GENERATIVE_AI_API_KEY` değerini girin:
-
-```bash
-cp .env.example .env
-```
-
-Anahtar tanımlanmazsa (veya çağrı başarısız olursa) uygulama otomatik olarak deterministik `fallbackPlan`'a geçer — AI anahtarı olmadan da tam olarak çalışır.
-
 ## Ekip
 
 KAYALAR — TEKNOFEST NSosyal İnovasyon Yarışması
