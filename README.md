@@ -327,7 +327,7 @@ Alınan kararlar:
 - **Deterministik `fallbackPlan`** — anahtar tanımlı değilse veya çağrı başarısız/zaman aşımına uğrarsa devreye girer; anahtar kelime tabanlı bölge tahmini yapar, aynı metin için her zaman aynı planı üretir
 - Çekirdeğin `Dinliyor` / `Analiz ediyor` ambiyans döngüsü hâlâ görsel bir animasyondur; "Fikrini Paylaş" panelindeki analiz ise artık gerçek bir sunucu çağrısıdır (AI ya da fallback kaynağı arayüzde şeffafça belirtilir)
 
-## Sonraki Adımlar (Planlanan)
+## Sonraki Adımlar 
 
 - Fikre katkı/geliştirme önerisi sunma ve fikir sahibinin onay akışı
 - Katkı Puanı (KP) için kalıcı bir defter/veritabanı katmanı (şu an her öneri anlık üretiliyor, saklanmıyor)
