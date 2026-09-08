@@ -306,7 +306,9 @@ Sprint 5'in hedefi; fikirleri ve katkıları kalıcı olarak saklayan bir veri k
 
 ### Sprint 5 Ürün Durumu
 
-Sprint 5 sonunda bir kullanıcı fikrini paylaşabiliyor, başka bir kullanıcı buna katkı sunabiliyor, fikir sahibi katkıyı onaylayabiliyor — onaylandığında katkı veren KP kazanıyor ve fikir gerçekten bir sonraki bölgeye ilerliyor (görsel bir simülasyon değil, veritabanındaki gerçek bir durum değişikliği). Bu akış, yerel bir Postgres'e karşı iki farklı takma adla (fikir sahibi / katkı veren) uçtan uca test edilmiştir: katkı sunma → onaylama → bölge ilerlemesi → liderlik tablosunda görünme, hepsi doğrulanmıştır. Gerçek Gemini API testi ve gerçek zamanlı (websocket) senkronizasyon henüz bu kapsamda değildir (bkz. [Sonraki Adımlar](#sonraki-adımlar)).
+Sprint 5 sonunda bir kullanıcı fikrini paylaşabiliyor, başka bir kullanıcı buna katkı sunabiliyor, fikir sahibi katkıyı onaylayabiliyor — onaylandığında katkı veren KP kazanıyor ve fikir gerçekten bir sonraki bölgeye ilerliyor (görsel bir simülasyon değil, veritabanındaki gerçek bir durum değişikliği). Bu akış, yerel bir Postgres'e karşı iki farklı takma adla (fikir sahibi / katkı veren) uçtan uca test edilmiştir: katkı sunma → onaylama → bölge ilerlemesi → liderlik tablosunda görünme, hepsi doğrulanmıştır. Gerçek zamanlı (websocket) senkronizasyon henüz bu kapsamda değildir (bkz. [Sonraki Adımlar](#sonraki-adımlar)).
+
+**Sprint 5 sonrası ek doğrulama:** Gerçek bir Google AI Studio API anahtarıyla test edilirken, varsayılan model olarak seçilen `gemini-2.5-flash`'ın Google tarafından yeni kullanıcılara kapatıldığı ve `gemini-3.6-flash`'a geçilmesi gerektiği canlı olarak ortaya çıktı; varsayılan model buna göre güncellendi (teknik rapordaki `google/gemini-3.7-flash` tahmini, Gemini'nin 3.x nesline geçtiğini doğruladı). Aynı testte, uzun Türkçe kelimeler içeren bir fikir metninde `fallbackPlan`'ın ürettiği başlığın 60 karakter sınırını aşıp `saveIdea`'yı Zod hatasıyla başarısız kıldığı gerçek bir hata da yakalanıp düzeltildi. Bu düzeltmelerden sonra gerçek Gemini çağrısı `"YAPAY ZEKÂ İLE ANALİZ EDİLDİ"` kaynağıyla, anlamlı bir başlık/bölge/tema/KP üreterek uçtan uca doğrulanmıştır — AI Fikir Çekirdeği artık yalnızca doğru bağlanmış değil, gerçekten çalıştığı kanıtlanmış durumdadır.
 
 ### Sprint 5 Review
 
@@ -372,7 +374,7 @@ Alınan kararlar:
 
 ### Yapay Zekâ Katmanı (Sprint 4)
 
-- **Vercel AI SDK (`generateObject`) + `@ai-sdk/google`** — `GOOGLE_GENERATIVE_AI_API_KEY` tanımlıysa gerçek bir Gemini modeline (`gemini-2.5-flash`, `MEYDAN_GEMINI_MODEL` ile değiştirilebilir) bağlanır
+- **Vercel AI SDK (`generateObject`) + `@ai-sdk/google`** — `GOOGLE_GENERATIVE_AI_API_KEY` tanımlıysa gerçek bir Gemini modeline (`gemini-3.6-flash`, `MEYDAN_GEMINI_MODEL` ile değiştirilebilir) bağlanır; gerçek bir anahtarla uçtan uca test edilmiştir
 - **Zod (`ideaPlanSchema`)** — model çıktısını bölge/tema/başlık/renk/KP/yapı listesi şemasına zorlar; şema dışı çıktı asla oyun motoruna parametre olamaz
 - **Deterministik `fallbackPlan`** — anahtar tanımlı değilse veya çağrı başarısız/zaman aşımına uğrarsa devreye girer; anahtar kelime tabanlı bölge tahmini yapar, aynı metin için her zaman aynı planı üretir
 - Çekirdeğin `Dinliyor` / `Analiz ediyor` ambiyans döngüsü hâlâ görsel bir animasyondur; "Fikrini Paylaş" panelindeki analiz ise artık gerçek bir sunucu çağrısıdır (AI ya da fallback kaynağı arayüzde şeffafça belirtilir)
@@ -388,7 +390,7 @@ Alınan kararlar:
 ## Sonraki Adımlar
 
 - Gerçek kimlik doğrulama (NSosyal ile SSO) — şu an yalnızca tarayıcı başına kalıcı bir takma ad var, gerçek bir hesap sistemi değil
-- Gerçek Gemini API anahtarıyla uçtan uca doğrulama (şu an yalnızca deterministik fallback gerçek veritabanına karşı test edilmiştir)
+- Gerçek Gemini anahtarının üretim ortamına (Vercel) eklenmesi — yerel olarak uçtan uca doğrulandı, ancak canlı dağıtımda henüz `GOOGLE_GENERATIVE_AI_API_KEY` tanımlı değil
 - Tam kapsamlı içerik moderasyonu (şu an yalnızca temel spam denetimi ve AI'nin kendi `uygunMu` sınıflandırması var; insan incelemesi/itiraz akışı yok)
 - Gerçek zamanlı (websocket tabanlı) çoklu kullanıcı senkronizasyonu — periyodik yenilemenin yerini alacak
 
