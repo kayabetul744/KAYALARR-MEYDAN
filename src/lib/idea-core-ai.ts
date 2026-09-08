@@ -40,9 +40,13 @@ Kurallar (bunlara kesinlikle uy, aksi hâlde çıktı reddedilir):
 - "baslik" en fazla altı kelime olmalı, kullanıcının fikrini özetlemeli.
 - "onerilenKatkiPuani" 1 ile 100 arasında bir tam sayı olmalı; fikrin netliği ve kapsamına göre öner.
 - "tema" fikri iki-üç kelimeyle özetleyen kısa bir etiket olmalı.
+- "uygunMu": metin saldırgan/nefret söylemi, taciz, açık kişisel veri (telefon,
+  adres, TC kimlik no vb.) veya spam/anlamsız içerik barındırıyorsa false,
+  aksi hâlde true olmalı. false olsa bile şemanın geri kalanını yine de,
+  makul bir tahminle, eksiksiz doldur.
 
-Uygunsuz, saldırgan veya kişisel veri içeren metinlerde bile şemaya uygun bir
-çıktı üret; içeriği yorumlama veya reddetme, yalnızca sınıflandır.`;
+Her durumda şemaya tam uyan bir çıktı üret; içeriği reddetme veya boş bırakma,
+yalnızca sınıflandır — nihai karar "uygunMu" alanına yansır.`;
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
 

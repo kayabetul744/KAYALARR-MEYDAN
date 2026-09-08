@@ -37,8 +37,22 @@ import { istanbulClock, type IstanbulClock } from "@/lib/istanbul-time";
 import { createSeascape } from "@/lib/seascape";
 import { planToVoxels, type IdeaAnalysis } from "@/lib/idea-core";
 import { analyzeIdea } from "@/lib/idea-core-ai";
+import { saveIdea } from "@/lib/ideas-db";
+import { useMeydanUser } from "@/lib/use-meydan-user";
+import { IdeasBrowser } from "@/components/IdeasBrowser";
 import { Joystick } from "@/components/Joystick";
-import { Sun, Moon, Clock, Footprints, Eye, ChevronsUp, Info, Sparkles, X } from "lucide-react";
+import {
+  Sun,
+  Moon,
+  Clock,
+  Footprints,
+  Eye,
+  ChevronsUp,
+  Info,
+  Sparkles,
+  X,
+  Users,
+} from "lucide-react";
 
 interface Contribution {
   id: string;
@@ -206,7 +220,6 @@ function buildCharacter(colors: CharColors = {}) {
       h.add(m);
     }
 
-
     /* Saç / şapka */
     const hair = colors.hair ?? 0x2a1e18;
     const style = colors.hairStyle ?? "short";
@@ -270,7 +283,6 @@ function makeBubble(text: string) {
   sprite.position.y = 2.85;
   return sprite;
 }
-
 
 const THEMES = {
   night: {
@@ -341,8 +353,6 @@ function Scene({
   zoneCb.current = onZone;
   const sceneRef = useRef<THREE.Scene | null>(null);
   const addedContributionsRef = useRef<Set<string>>(new Set());
-
-
 
   useEffect(() => {
     const host = hostRef.current;
@@ -466,7 +476,6 @@ function Scene({
         phase: n.phase,
       };
     });
-
 
     /* ---------- Merkez: dairesel hologram platformu ---------- */
     const platform = new THREE.Group();
@@ -670,7 +679,11 @@ function Scene({
           : atComm
             ? new THREE.Vector3(COMMUNITY_CENTER.x, 0, COMMUNITY_CENTER.z + COMMUNITY_HALF - 2)
             : atAchievement
-              ? new THREE.Vector3(ACHIEVEMENT_CENTER.x, 0, ACHIEVEMENT_CENTER.z + ACHIEVEMENT_HALF - 2)
+              ? new THREE.Vector3(
+                  ACHIEVEMENT_CENTER.x,
+                  0,
+                  ACHIEVEMENT_CENTER.z + ACHIEVEMENT_HALF - 2,
+                )
               : atIdea
                 ? new THREE.Vector3(IDEA_CENTER.x - IDEA_HALF + 14, 0, IDEA_CENTER.z)
                 : new THREE.Vector3(0, 0, 20);
@@ -784,7 +797,6 @@ function Scene({
       if (g + 1 - fromY > 1.25) return null;
       return g + 1;
     };
-
 
     const composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
@@ -957,7 +969,6 @@ function Scene({
         bubble.visible = bm.opacity > 0.02;
       }
 
-
       const walking = modeRef.current === "walk";
 
       if (walking) {
@@ -1109,7 +1120,6 @@ function Scene({
         controls.update();
       }
 
-
       composer.render();
     };
     loop();
@@ -1158,7 +1168,6 @@ function Scene({
     }
   }, [contributions, theme]);
 
-
   return <div ref={hostRef} className="h-full w-full" />;
 }
 
@@ -1188,6 +1197,12 @@ export function IdeaSquare() {
   const [ideaBusy, setIdeaBusy] = useState(false);
   const [ideaResult, setIdeaResult] = useState<IdeaAnalysis | null>(null);
   const [ideaError, setIdeaError] = useState<string | null>(null);
+  const [persistNote, setPersistNote] = useState<string | null>(null);
+
+  const { name: userName, setName: setUserName, ready: userReady } = useMeydanUser();
+  const [namePromptOpen, setNamePromptOpen] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [browserOpen, setBrowserOpen] = useState(false);
 
   useEffect(() => {
     const id = window.setInterval(() => setClock(istanbulClock()), 30_000);
@@ -1213,8 +1228,13 @@ export function IdeaSquare() {
       setIdeaError("Fikrini biraz daha uzun yaz.");
       return;
     }
+    if (!userName) {
+      setNamePromptOpen(true);
+      return;
+    }
     setIdeaBusy(true);
     setIdeaError(null);
+    setPersistNote(null);
     try {
       const analysis = await analyzeIdea({ data: text });
       setIdeaResult(analysis);
@@ -1222,6 +1242,17 @@ export function IdeaSquare() {
         ...prev,
         { id: `${Date.now()}-${prev.length}`, voxels: planToVoxels(analysis.plan) },
       ]);
+      try {
+        await saveIdea({
+          data: { text, plan: analysis.plan, source: analysis.source, ownerName: userName },
+        });
+      } catch (persistErr) {
+        setPersistNote(
+          persistErr instanceof Error
+            ? `Fikir kalıcı deftere kaydedilemedi: ${persistErr.message}`
+            : "Fikir kalıcı deftere kaydedilemedi.",
+        );
+      }
     } catch (err) {
       setIdeaError(
         err instanceof Error ? err.message : "Çekirdek şu anda analiz edemedi, tekrar dene.",
@@ -1229,8 +1260,31 @@ export function IdeaSquare() {
     } finally {
       setIdeaBusy(false);
     }
-  }, [ideaText]);
+  }, [ideaText, userName]);
 
+  const openIdeaPanel = useCallback(() => {
+    if (userReady && !userName) {
+      setNamePromptOpen(true);
+      return;
+    }
+    setIdeaOpen(true);
+  }, [userReady, userName]);
+
+  const openIdeasBrowser = useCallback(() => {
+    if (userReady && !userName) {
+      setNamePromptOpen(true);
+      return;
+    }
+    setBrowserOpen(true);
+  }, [userReady, userName]);
+
+  const submitNameDraft = useCallback(() => {
+    const trimmed = nameDraft.trim();
+    if (trimmed.length < 1) return;
+    setUserName(trimmed);
+    setNamePromptOpen(false);
+    setNameDraft("");
+  }, [nameDraft, setUserName]);
 
   return (
     <div className="relative h-screen w-full touch-none">
@@ -1260,9 +1314,7 @@ export function IdeaSquare() {
                 <span className="text-[11px] font-normal text-muted-foreground">TSİ</span>
               </div>
               <p className="mt-1.5 text-xs font-medium text-primary">Çekirdek: {coreState}</p>
-              {mode === "walk" && (
-                <p className="text-xs text-muted-foreground">Kamera: {view}</p>
-              )}
+              {mode === "walk" && <p className="text-xs text-muted-foreground">Kamera: {view}</p>}
             </div>
             <button
               onClick={() => setShowHelp((v) => !v)}
@@ -1321,7 +1373,6 @@ export function IdeaSquare() {
         </div>
       </div>
 
-
       {/* Bölgeye giriş bildirimi */}
       {mode === "walk" && zone && (
         <div className="pointer-events-none absolute left-1/2 top-36 -translate-x-1/2 animate-fade-in rounded-2xl border border-border/40 bg-card/75 px-5 py-2 text-center shadow-lg backdrop-blur-md">
@@ -1329,7 +1380,6 @@ export function IdeaSquare() {
           <p className="text-[11px] text-muted-foreground">Kuş bakışı görünüme geçildi</p>
         </div>
       )}
-
 
       {/* Nişangâh (birinci şahıs) */}
       {mode === "walk" && view === "1. şahıs" && (
@@ -1348,7 +1398,15 @@ export function IdeaSquare() {
 
         <div className="flex flex-col items-end gap-2">
           <button
-            onClick={() => setIdeaOpen(true)}
+            onClick={openIdeasBrowser}
+            aria-label="Fikirler ve katkılar"
+            className="flex items-center gap-2 rounded-2xl border border-border/40 bg-card/80 px-4 py-2.5 text-sm font-semibold text-card-foreground shadow-lg backdrop-blur-md transition-transform hover:scale-[1.03]"
+          >
+            <Users className="h-4 w-4 text-primary" />
+            <span className="hidden sm:inline">Fikirler &amp; Katkılar</span>
+          </button>
+          <button
+            onClick={openIdeaPanel}
             aria-label="Fikrini paylaş"
             className="flex items-center gap-2 rounded-2xl border border-border/40 bg-card/80 px-4 py-2.5 text-sm font-semibold text-card-foreground shadow-lg backdrop-blur-md transition-transform hover:scale-[1.03]"
           >
@@ -1454,13 +1512,65 @@ export function IdeaSquare() {
                       ? "Yapay zekâ ile analiz edildi"
                       : "Deterministik plana geçildi (AI kullanılamadı)"}
                   </p>
+                  {!ideaResult.plan.uygunMu && (
+                    <p className="mt-1.5 rounded-lg bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
+                      Bu metin uygunsuz/spam olarak işaretlendi; yine de görüntüleniyor, moderasyon
+                      ekibi tarafından incelenmesi önerilir.
+                    </p>
+                  )}
+                  {persistNote && (
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">{persistNote}</p>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </div>
       )}
+
+      {/* Katkı/onay akışı için gerekli takma ad — gerçek kimlik doğrulama yok */}
+      {namePromptOpen && (
+        <div className="pointer-events-auto absolute inset-0 z-30 flex items-center justify-center bg-background/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-border/40 bg-card p-5 text-card-foreground shadow-2xl">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
+              Meydan
+            </p>
+            <p className="mt-1 text-sm font-semibold">Önce bir takma ad seç</p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Fikrini paylaşman ve katkı sunman için bir isim gerekiyor — bu, fikrini kimin
+              paylaştığını ve katkını kimin onayladığını ayırt etmek için kullanılır.
+            </p>
+            <input
+              value={nameDraft}
+              onChange={(e) => setNameDraft(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submitNameDraft()}
+              placeholder="Takma adın"
+              maxLength={40}
+              autoFocus
+              className="mt-3 w-full rounded-xl border border-border/40 bg-background/60 p-2.5 text-sm text-foreground outline-none focus:border-primary"
+            />
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={submitNameDraft}
+                disabled={nameDraft.trim().length < 1}
+                className="flex-1 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+              >
+                Devam et
+              </button>
+              <button
+                onClick={() => setNamePromptOpen(false)}
+                className="rounded-xl border border-border/40 px-4 py-2 text-sm text-muted-foreground hover:bg-accent"
+              >
+                Vazgeç
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {browserOpen && userName && (
+        <IdeasBrowser currentUser={userName} onClose={() => setBrowserOpen(false)} />
+      )}
     </div>
   );
 }
-

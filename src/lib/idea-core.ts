@@ -53,7 +53,17 @@ export const ideaPlanSchema = z.object({
   renk: z.string().regex(HEX_COLOR_RE, "Renk #rrggbb biçiminde olmalı"),
   onerilenKatkiPuani: z.number().int().min(1).max(100),
   yapilar: z.array(ideaStructurePointSchema).min(14).max(26),
+  /** Temel moderasyon: model içeriği uygunsuz/saldırgan/kişisel veri içerir olarak işaretlerse false döner. */
+  uygunMu: z.boolean(),
 });
+
+/** 6 bölgenin sabit sırası — bir katkı onaylandığında fikir bir sonraki bölgeye ilerler. */
+export const REGION_ORDER: RegionName[] = REGIONS.map((r) => r.name);
+
+export function nextRegion(current: RegionName): RegionName {
+  const i = REGION_ORDER.indexOf(current);
+  return i === -1 || i === REGION_ORDER.length - 1 ? current : REGION_ORDER[i + 1]!;
+}
 
 export type IdeaStructurePoint = z.infer<typeof ideaStructurePointSchema>;
 export type IdeaPlan = z.infer<typeof ideaPlanSchema>;
@@ -112,6 +122,20 @@ function titleFromText(text: string): string {
 }
 
 /**
+ * Çok temel bir spam/anlamsız-içerik denetimi: aynı karakterin art arda çok
+ * tekrarı ya da harf çeşitliliği neredeyse hiç olmayan metinler işaretlenir.
+ * Gerçek moderasyon (uygunsuz içerik, kişisel veri) AI tarafında `uygunMu`
+ * alanıyla yapılır; bu yalnızca AI kullanılamadığında devreye giren, dar
+ * kapsamlı bir güvenlik ağıdır (bkz. README > Sonraki Adımlar).
+ */
+export function looksLikeSpam(text: string): boolean {
+  if (/(.)\1{9,}/.test(text)) return true;
+  const letters = text.toLocaleLowerCase("tr-TR").replace(/[^a-zçğıöşü]/g, "");
+  if (letters.length >= 12 && new Set(letters).size <= 2) return true;
+  return false;
+}
+
+/**
  * Yapay zekâ servisine erişilemediğinde (anahtar yok, ağ hatası, zaman aşımı)
  * devreye giren kural tabanlı üretici. Aynı metin her zaman aynı planı üretir.
  */
@@ -132,6 +156,7 @@ export function fallbackPlan(text: string): IdeaPlan {
     renk: toHexColor(regionColor(region)),
     onerilenKatkiPuani: kp,
     yapilar,
+    uygunMu: !looksLikeSpam(text),
   };
 }
 

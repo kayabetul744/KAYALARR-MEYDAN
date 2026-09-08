@@ -29,7 +29,7 @@ Bugünkü sosyal platformlarda bir fikir paylaşılır, beğeni/yorum alır ve k
 | 5 | **Pazar** | Ürün paylaşılır, gerçek değer kazanmaya başlar |
 | 6 | **Başarı** | Fikir sahibi + tüm katkı verenler Katkı Puanı (KP) ile ödüllenir |
 
-Fikrin sahibi her aşamada sahip kalır; katkı verenler kendi KP'sini kendi emeğiyle kazanır. Bu akışın 3B dünya karşılığı bugün itibarıyla **gezilebilir** durumda; **fikir gönderimi ve AI Fikir Çekirdeği'nin bölge yönlendirmesi artık gerçek** (bkz. [Sprint 4](#sprint-4)). Katkı/onay akışı ve kalıcı bir Katkı Puanı defteri ise henüz koda bağlanmamış, aşağıdaki [Sonraki Adımlar](#sonraki-adımlar-planlanan) bölümünde planlanan işlevlerdir.
+Fikrin sahibi her aşamada sahip kalır; katkı verenler kendi KP'sini kendi emeğiyle kazanır. Bu akışın 3B dünya karşılığı bugün itibarıyla **gezilebilir** durumda; **fikir gönderimi, AI Fikir Çekirdeği'nin bölge yönlendirmesi, katkı/onay akışı ve kalıcı Katkı Puanı defteri artık gerçek** (bkz. [Sprint 4](#sprint-4) ve [Sprint 5](#sprint-5)). Gerçek bir kimlik doğrulama (NSosyal ile SSO) ve tam kapsamlı moderasyon ise henüz koda bağlanmamış, aşağıdaki [Sonraki Adımlar](#sonraki-adımlar) bölümünde planlanan işlevlerdir.
 
 <p align="center">
   <img src="docs/ada_genel_gorunum.png" alt="Meydan — ada genel görünümü, 6 bölge ve merkez çekirdek" width="100%" />
@@ -43,13 +43,14 @@ Fikrin sahibi her aşamada sahip kalır; katkı verenler kendi KP'sini kendi eme
 - **İstanbul saatine göre gerçek zamanlı gündüz/gece döngüsü** — gökyüzü, ışıklandırma ve çekirdek parıltısı saatle birlikte değişir
 - Çekirdeğin canlı durum göstergesi (`Dinliyor` / `Analiz ediyor`) ve NSOSYAL bilgi paneli
 - `EffectComposer` + `UnrealBloomPass` ile ışık hüzmeleri ve gece parıltısı
-- **"Fikrini Paylaş" paneli:** serbest metni AI Fikir Çekirdeği'ne gönderir; çekirdek fikri altı bölgeden birine yönlendirir, bir başlık/tema/renk ve önerilen Katkı Puanı üretir, sonuç doğru bölgenin üstünde beliren bir hologram katkı yapısı olarak 3B dünyaya işlenir
-- Fikrin Tasarım → Üretim → Topluluk → Pazar → Başarı adımlarındaki katkı/onay akışı ve kalıcı KP defteri — ürünün hedeflediği, [Sonraki Adımlar](#sonraki-adımlar-planlanan)'da işlevselleştirilecek süreç
-- Herkesin aynı anda birlikte bulunduğu tek bir ortak 3B dünya (izole/kişiye özel dünyalar değil) — hedeflenen çok kullanıcılı senkronizasyon
+- **"Fikrini Paylaş" paneli:** serbest metni AI Fikir Çekirdeği'ne gönderir; çekirdek fikri altı bölgeden birine yönlendirir, bir başlık/tema/renk ve önerilen Katkı Puanı üretir, sonuç doğru bölgenin üstünde beliren bir hologram katkı yapısı olarak 3B dünyaya işlenir ve kalıcı deftere kaydedilir
+- **"Fikirler & Katkılar" paneli:** paylaşılan tüm fikirleri listeler; başkasının fikrine katkı sunabilir, kendi fikrine gelen katkıları onaylayıp/reddedebilirsin — onaylanan katkı, katkı verene KP kazandırır ve fikri bir sonraki bölgeye ilerletir
+- **Liderlik tablosu:** onaylanan katkılara göre toplam Katkı Puanı sıralaması
+- Herkesin aynı anda birlikte bulunduğu tek bir ortak 3B dünya: fikirler/katkılar kalıcı bir veritabanında yaşar, tüm kullanıcılar aynı veriye bakar (periyodik yenileme ile senkronize; gerçek zamanlı anlık iletim [Sonraki Adımlar](#sonraki-adımlar)'da)
 
 ### Farkımız
 
-Bugünkü sosyal platformların büyük çoğunluğunda bir fikir paylaşılır, tepki alır ve unutulur. Meydan'ı farklı kılması hedeflenen dört temel nokta:
+Bugünkü sosyal platformların büyük çoğunluğunda bir fikir paylaşılır, tepki alır ve unutulur. Meydan'ı farklı kılan dört temel nokta:
 
 | | Klasik Sosyal Platformlar | Meydan |
 |---|---|---|
@@ -205,7 +206,7 @@ Sprint 3'ün hedefi; **Pazar** bölgesinin voxel dünyada inşa edilmesi, `Effec
 
 ### Sprint 3 Ürün Durumu
 
-Sprint 3 sonunda dünya, uçtan uca gezilebilir, gündüz/gece döngüsüne ve görsel cilaya sahip bir prototip hâline gelmiştir. Pazar bölgesi meydan çevresinde voxel yerleşimiyle görselleştirilmiş, çekirdeğin durum göstergesi arayüze eklenmiştir. Fikir paylaşımı, onay akışı ve KP hesaplaması bu aşamada henüz gerçek bir veri katmanına bağlı değildir (bkz. [Sonraki Adımlar](#sonraki-adımlar-planlanan)).
+Sprint 3 sonunda dünya, uçtan uca gezilebilir, gündüz/gece döngüsüne ve görsel cilaya sahip bir prototip hâline gelmiştir. Pazar bölgesi meydan çevresinde voxel yerleşimiyle görselleştirilmiş, çekirdeğin durum göstergesi arayüze eklenmiştir. Fikir paylaşımı, onay akışı ve KP hesaplaması bu aşamada henüz gerçek bir veri katmanına bağlı değildir (bkz. [Sonraki Adımlar](#sonraki-adımlar)).
 
 #### Sprint 3 Ürün Görselleri
 
@@ -282,13 +283,56 @@ Alınan kararlar:
 
 ---
 
+## Sprint 5
+
+### Sprint 5 Notları
+
+Sprint 4'ün retrospective'inde belirlenen öncelik doğrultusunda, Sprint 5 kapsamında katkı/onay akışı ve kalıcı Katkı Puanı (KP) defteri gerçek bir veritabanına bağlandı. Bu, "Farkımız" bölümünde anlatılan katkı sahipliği ve süreç şeffaflığı iddialarının artık koda karşılık gelmesini sağlar.
+
+### Sprint 5 Goal
+
+Sprint 5'in hedefi; fikirleri ve katkıları kalıcı olarak saklayan bir veri katmanı kurmak, fikir sahibinin gelen katkıları onaylayıp/reddedebildiği bir arayüz sunmak, onaylanan katkıların KP kazandırıp fikri bir sonraki bölgeye ilerletmesini sağlamak ve temel bir moderasyon/spam denetimi eklemektir.
+
+### Sprint 5'te Tamamlanan İşler
+
+**Done**
+- Postgres şeması (`meydan_ideas`, `meydan_contributions`) — Vercel Postgres/Neon ile çalışacak şekilde `pg` istemcisiyle kuruldu (`src/lib/db.ts`, `src/lib/ideas-db.ts`)
+- `saveIdea` / `listIdeas`: her fikir artık AI/fallback analizinden sonra kalıcı olarak kaydediliyor ve listelenebiliyor
+- `proposeContribution` / `listContributions` / `decideContribution`: katkı sunma, fikir sahibinin görmesi ve onaylama/reddetme — onaylanan katkı katkı verene KP kazandırır, fikri `nextRegion` ile bir sonraki bölgeye ilerletir
+- `getLeaderboard`: onaylanan katkılara göre toplam KP sıralaması
+- **"Fikirler & Katkılar"** arayüz paneli (`IdeasBrowser.tsx`): fikirleri gezme, katkı sunma, kendi fikrine gelen katkıları onaylama/reddetme, liderlik tablosu — 15 saniyede bir kendini tazeler (basit çoklu kullanıcı senkronizasyonu)
+- Kalıcı takma ad (`use-meydan-user.ts`, `localStorage`) — gerçek kimlik doğrulama olmadan "kim kimdir" sorusuna cevap veren, pilot ölçekte yeterli bir çözüm
+- Temel moderasyon: `ideaPlanSchema`'ya eklenen `uygunMu` alanı (AI kullanılabiliyorsa modelin kendi sınıflandırması), fallback için basit spam/anlamsız-içerik denetimi (`looksLikeSpam`)
+
+### Sprint 5 Ürün Durumu
+
+Sprint 5 sonunda bir kullanıcı fikrini paylaşabiliyor, başka bir kullanıcı buna katkı sunabiliyor, fikir sahibi katkıyı onaylayabiliyor — onaylandığında katkı veren KP kazanıyor ve fikir gerçekten bir sonraki bölgeye ilerliyor (görsel bir simülasyon değil, veritabanındaki gerçek bir durum değişikliği). Bu akış, yerel bir Postgres'e karşı iki farklı takma adla (fikir sahibi / katkı veren) uçtan uca test edilmiştir: katkı sunma → onaylama → bölge ilerlemesi → liderlik tablosunda görünme, hepsi doğrulanmıştır. Gerçek Gemini API testi ve gerçek zamanlı (websocket) senkronizasyon henüz bu kapsamda değildir (bkz. [Sonraki Adımlar](#sonraki-adımlar)).
+
+### Sprint 5 Review
+
+Sprint 5 sonunda ekip, katkı/onay akışının uçtan uca çalıştığını iki farklı kullanıcı kimliğiyle birlikte test etmiştir. Sprint 4'ün retrospective kararı (katkı/onay ve KP defterine öncelik) karşılanmıştır.
+
+Alınan kararlar:
+- Vercel Postgres/Neon bağlantısı olmadan da uygulamanın çökmemesi (anlaşılır bir hata gösterip 3B dünyanın çalışmaya devam etmesi) kalıcı bir tasarım kuralı olarak korunacaktır.
+- Gerçek kimlik doğrulama (NSosyal SSO) gelene kadar takma ad tabanlı sahiplik modelinin pilot/demo amaçlı yeterli olduğu, ancak üretim sürümü için yetersiz olduğu not edilmiştir.
+
+### Sprint 5 Retrospective
+
+Veritabanı bağlantı dizesinin (`DATABASE_URL`) Vercel Postgres ile Neon'un serverless sürücüsü yerine standart `pg` istemcisiyle okunması, kodu hem yerel Postgres'e hem Vercel'e karşı aynı şekilde çalışır kıldı — bu, bir önceki sprintin "framework'e özgü konvansiyonlar doğrulanmadan varsayılmamalı" dersinin bir uzantısı olarak, mümkün olduğunda standart/taşınabilir arayüzlerin tercih edilmesi gerektiğini gösterdi.
+
+Alınan kararlar:
+- Yeni bir veri katmanı eklenirken, sağlayıcıya özel SDK'lar yerine önce standart protokolün (burada düz Postgres bağlantısı) yeterli olup olmadığı değerlendirilmelidir.
+- Sahiplik/onay gibi yetki gerektiren her sunucu fonksiyonunda, yetki kontrolü (burada `ownerName` eşleşmesi) istemciye değil sunucuya konulmalıdır.
+
+---
+
 ## Kullanılan Teknolojiler ve Mimari
 
 ### Klasörler
 
 - `src/routes/` — TanStack Start dosya tabanlı route'lar (şu an tek route: `/`)
-- `src/components/` — `IdeaSquare.tsx` (ana 3B sahne bileşeni + "Fikrini Paylaş" paneli), `Joystick.tsx` (karakter kontrolü), `ui/` (shadcn tabanlı arayüz bileşenleri)
-- `src/lib/` — `voxel-world.ts` (voxel dünya üretimi: 6 bölge, çekirdek, NPC'ler), `istanbul-time.ts` (gündüz/gece saat mantığı), `seascape.ts` (ada çevresindeki deniz), `idea-core.ts` (Zod şeması, deterministik fallback, plan→voxel dönüşümü — izomorfik), `idea-core-ai.ts` (AI Fikir Çekirdeği'nin `createServerFn` sunucu fonksiyonu — yalnızca sunucuda çalışır)
+- `src/components/` — `IdeaSquare.tsx` (ana 3B sahne bileşeni + "Fikrini Paylaş" paneli), `IdeasBrowser.tsx` ("Fikirler & Katkılar" paneli, liderlik tablosu), `Joystick.tsx` (karakter kontrolü), `ui/` (shadcn tabanlı arayüz bileşenleri)
+- `src/lib/` — `voxel-world.ts` (voxel dünya üretimi: 6 bölge, çekirdek, NPC'ler), `istanbul-time.ts` (gündüz/gece saat mantığı), `seascape.ts` (ada çevresindeki deniz), `idea-core.ts` (Zod şeması, deterministik fallback, plan→voxel dönüşümü — izomorfik), `idea-core-ai.ts` (AI Fikir Çekirdeği'nin `createServerFn` sunucu fonksiyonu), `db.ts` (paylaşılan Postgres bağlantı havuzu), `ideas-db.ts` (fikir/katkı/KP `createServerFn`'leri — bunlar da sunucuda çalışır), `use-meydan-user.ts` (kalıcı takma ad hook'u)
 
 ### Mimari Genel Bakış
 
@@ -309,9 +353,15 @@ Alınan kararlar:
  voxel-world.ts     istanbul-time.ts   Joystick.tsx
  6 bölge + çekirdek   gündüz/gece        karakter
  + NPC üretimi          saat mantığı      girdisi
+
+┌───────────────────────────────┐   saveIdea / listIdeas / propose-      ┌───────────────────────────┐
+│  IdeasBrowser.tsx               │   Contribution / decideContribution   │  ideas-db.ts (sunucu)      │
+│  Fikirler · Katkı Sun · Onayla  │ ─────────────────────────────────────▶│  db.ts (pg Pool)           │
+│  · Liderlik Tablosu · 15sn poll │◀────────────────────────────────────  │  → Vercel Postgres / Neon  │
+└───────────────────────────────┘        IdeaRecord[] / KP sıralaması    └───────────────────────────┘
 ```
 
-`voxel-world.ts`, 6 bölgeyi (`REGIONS`: Fikir, Tasarım, Üretim, Topluluk, Pazar, Başarı) ve merkezdeki hologram çekirdeği (`buildCore`) prosedürel olarak üretir; `IdeaSquare.tsx` bu veriyi Three.js sahnesine render eder, `istanbul-time.ts`'den gelen saate göre gündüz/gece geçişini uygular ve `Joystick.tsx` üzerinden gelen girdiyle karakteri hareket ettirir. Kullanıcı bir fikir gönderdiğinde `analyzeIdea` sunucu fonksiyonu çağrılır; sonuç (AI'dan ya da fallback'ten) `planToVoxels` ile bölgenin üstünde süzülen bir hologram katkı yapısına çevrilip, dünyanın ana kurulumunu yeniden başlatmadan sahneye eklenir.
+`voxel-world.ts`, 6 bölgeyi (`REGIONS`: Fikir, Tasarım, Üretim, Topluluk, Pazar, Başarı) ve merkezdeki hologram çekirdeği (`buildCore`) prosedürel olarak üretir; `IdeaSquare.tsx` bu veriyi Three.js sahnesine render eder, `istanbul-time.ts`'den gelen saate göre gündüz/gece geçişini uygular ve `Joystick.tsx` üzerinden gelen girdiyle karakteri hareket ettirir. Kullanıcı bir fikir gönderdiğinde `analyzeIdea` sunucu fonksiyonu çağrılır; sonuç (AI'dan ya da fallback'ten) hem `planToVoxels` ile bölgenin üstünde süzülen bir hologram katkı yapısına çevrilip sahneye eklenir, hem de `saveIdea` ile kalıcı deftere kaydedilir. `IdeasBrowser.tsx`, `ideas-db.ts` üzerinden fikirleri/katkıları okur ve yazar; bir katkı onaylandığında fikrin bölgesi `nextRegion` ile ilerler ve katkı veren KP kazanır.
 
 ### İstemci
 
@@ -327,12 +377,20 @@ Alınan kararlar:
 - **Deterministik `fallbackPlan`** — anahtar tanımlı değilse veya çağrı başarısız/zaman aşımına uğrarsa devreye girer; anahtar kelime tabanlı bölge tahmini yapar, aynı metin için her zaman aynı planı üretir
 - Çekirdeğin `Dinliyor` / `Analiz ediyor` ambiyans döngüsü hâlâ görsel bir animasyondur; "Fikrini Paylaş" panelindeki analiz ise artık gerçek bir sunucu çağrısıdır (AI ya da fallback kaynağı arayüzde şeffafça belirtilir)
 
-## Sonraki Adımlar 
+### Veri Katmanı (Sprint 5)
 
-- Fikre katkı/geliştirme önerisi sunma ve fikir sahibinin onay akışı
-- Katkı Puanı (KP) için kalıcı bir defter/veritabanı katmanı (şu an her öneri anlık üretiliyor, saklanmıyor)
-- Çoklu kullanıcı senkronizasyonu — herkesin gerçekten "aynı anda" aynı dünyada olduğu gerçek zamanlı katman
-- İçerik moderasyonu / uygunsuz metin filtreleme katmanı
+- **Postgres** (`pg` istemcisi, Vercel Postgres/Neon uyumlu) — `meydan_ideas` ve `meydan_contributions` tabloları; ilk çağrıda şema otomatik oluşturulur (`ensureSchema`)
+- **Katkı/onay akışı** — `proposeContribution` bir katkıyı `pending` olarak kaydeder; `decideContribution` yalnızca fikrin `owner_name`'iyle eşleşen isteklere onay/red izni verir (sunucu tarafında doğrulanır, istemciye güvenilmez)
+- **KP defteri ve bölge ilerlemesi** — onaylanan her katkı, katkı verene KP kazandırır ve fikri `nextRegion` ile bir sonraki bölgeye taşır; `getLeaderboard` bunları toplam KP'ye göre sıralar
+- **Basit çoklu kullanıcı senkronizasyonu** — `IdeasBrowser` açıkken 15 saniyede bir kendini tazeler; gerçek zamanlı (websocket/anlık) senkronizasyon henüz yok
+- Veritabanı bağlantısı tanımlı değilse "Fikirler & Katkılar" paneli anlaşılır bir hata gösterir; 3B dünya ve AI Fikir Çekirdeği bundan etkilenmez
+
+## Sonraki Adımlar
+
+- Gerçek kimlik doğrulama (NSosyal ile SSO) — şu an yalnızca tarayıcı başına kalıcı bir takma ad var, gerçek bir hesap sistemi değil
+- Gerçek Gemini API anahtarıyla uçtan uca doğrulama (şu an yalnızca deterministik fallback gerçek veritabanına karşı test edilmiştir)
+- Tam kapsamlı içerik moderasyonu (şu an yalnızca temel spam denetimi ve AI'nin kendi `uygunMu` sınıflandırması var; insan incelemesi/itiraz akışı yok)
+- Gerçek zamanlı (websocket tabanlı) çoklu kullanıcı senkronizasyonu — periyodik yenilemenin yerini alacak
 
 ## Kurulum
 
@@ -349,6 +407,8 @@ npm run preview    # üretim derlemesini yerelde önizleme
 npm run lint        # ESLint
 npm run format       # Prettier
 ```
+
+Katkı/onay akışı ve KP defteri için bir Postgres bağlantısı gerekir (`.env.example`'a bakın): Vercel'de proje panelinden bir Postgres (Neon) storage eklediğinizde `POSTGRES_URL` otomatik enjekte edilir; yerelde kendi Postgres'inizin bağlantı dizesini `DATABASE_URL` olarak `.env` dosyanıza girin. Tanımlı değilse 3B dünya ve AI Fikir Çekirdeği yine de çalışır, yalnızca "Fikirler & Katkılar" paneli bir hata gösterir.
 
 ## Ekip
 
