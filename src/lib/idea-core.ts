@@ -116,9 +116,16 @@ function guessRegion(text: string): RegionName {
   return best;
 }
 
+const MAX_TITLE_LENGTH = 60;
+
 function titleFromText(text: string): string {
   const words = text.trim().split(/\s+/).filter(Boolean).slice(0, 6);
-  return words.length > 0 ? words.join(" ") : "Yeni fikir";
+  const title = words.length > 0 ? words.join(" ") : "Yeni fikir";
+  // ideaPlanSchema.baslik en fazla 60 karakter kabul eder; altı uzun kelime
+  // (özellikle Türkçe'de) bunu kolayca aşabilir, o yüzden burada da kırpılır.
+  return title.length <= MAX_TITLE_LENGTH
+    ? title
+    : `${title.slice(0, MAX_TITLE_LENGTH - 1).trimEnd()}…`;
 }
 
 /**

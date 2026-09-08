@@ -48,7 +48,9 @@ Kurallar (bunlara kesinlikle uy, aksi hâlde çıktı reddedilir):
 Her durumda şemaya tam uyan bir çıktı üret; içeriği reddetme veya boş bırakma,
 yalnızca sınıflandır — nihai karar "uygunMu" alanına yansır.`;
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+// gemini-2.5-flash yeni kullanıcılara kapatıldı (Google API'sinin canlı hata
+// mesajıyla doğrulandı); güncel hızlı model olarak gemini-3.6-flash kullanılır.
+const DEFAULT_MODEL = "gemini-3.6-flash";
 
 export const analyzeIdea = createServerFn({ method: "POST" })
   .validator((text: unknown) => {
