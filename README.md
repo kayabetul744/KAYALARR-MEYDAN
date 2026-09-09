@@ -328,6 +328,71 @@ Alınan kararlar:
 
 ---
 
+## Sprint 6
+
+### Sprint 6 Notları
+
+Sprint 6 kapsamında dünyanın görsel tasarımı (UI/UX) güncellendi: adanın merkezine büyük, okunaklı bir "MEYDAN" tabelası eklendi; Başarı ve Pazar bölgelerinin görsel temaları yeniden tasarlandı; gece modundaki ışıklandırma/parıltı efektleri belirginleştirildi.
+
+### Sprint 6 Goal
+
+Sprint 6'nın hedefi; dünyanın ilk bakışta ne olduğunu (adı, kimliği) daha net anlatan bir merkez tabelası eklemek ve Başarı/Pazar bölgelerinin görsel dilini, bölgenin işlevini daha iyi yansıtacak şekilde güçlendirmektir.
+
+### Sprint 6'da Tamamlanan İşler
+
+**Done**
+- Ada merkezine, gökten bakıldığında okunan büyük bir **"MEYDAN"** 3B tabela/logo eklendi
+- **Başarı** bölgesi, pergolalı ve çok kürsülü bir ödül/tapınak yapısı olarak yeniden tasarlandı
+- **Pazar** bölgesi, koyu tonlu modüler pazar tezgahı/bahçe düzenine dönüştürüldü
+- Gece modu genelinde bölge ışıklandırması ve parıltı efektleri belirginleştirildi
+
+### Sprint 6 Ürün Durumu
+
+Bu güncelleme şu an **Lovable tasarım editöründe** yapılmış durumda ve aşağıdaki ekran görüntüleriyle belgelenmiştir. Bu depodaki (`src/lib/voxel-world.ts`) kaynak kod henüz bu yeni tasarımı içermiyor — bu bölüm yalnızca görsel öncesi/sonrası karşılaştırması içindir; yeni tasarımın koda aktarılması ayrı bir adım olarak bekliyor.
+
+#### Sprint 6 Ürün Görselleri — Öncesi / Sonrası
+
+<table>
+  <tr>
+    <th width="50%">Önce</th>
+    <th width="50%">Sonra</th>
+  </tr>
+  <tr>
+    <td><img src="docs/ada_genel_gorunum.png" alt="Ada genel görünümü — önceki tasarım" width="100%" /></td>
+    <td><img src="docs/v2_ada_genel_gorunum.png" alt="Ada genel görünümü — merkeze MEYDAN tabelası eklendi" width="100%" /></td>
+  </tr>
+  <tr>
+    <td><img src="docs/ada_gece_gorunum.png" alt="Gece görünümü — önceki tasarım" width="100%" /></td>
+    <td><img src="docs/v2_ada_gece_gorunum.png" alt="Gece görünümü — güçlendirilmiş ışıklandırma" width="100%" /></td>
+  </tr>
+  <tr>
+    <td><img src="docs/pazar_bolgesi.png" alt="Pazar bölgesi — önceki tasarım" width="100%" /></td>
+    <td><img src="docs/v2_pazar_bolgesi.png" alt="Pazar bölgesi — yeni koyu tonlu tezgah düzeni" width="100%" /></td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src="docs/v2_basari_bolgesi.png" alt="Başarı bölgesi — yeni pergolalı ödül tapınağı tasarımı" width="70%" />
+</p>
+<p align="center"><sub>Başarı bölgesi — yeni tasarım (önceki sürüme ait ayrı bir yakın çekim görsel yoktu).</sub></p>
+
+### Sprint 6 Review
+
+Yeni tasarımın, bölgelerin işlevini (Başarı = ödül/kürsü, Pazar = tezgah/alışveriş) daha net anlattığı ve merkezdeki tabelanın dünyaya kimlik kattığı değerlendirilmiştir.
+
+Alınan kararlar:
+- Yeni tasarımın kaynak koda (`voxel-world.ts`) aktarılması bir sonraki sprintte ele alınacaktır.
+- Görsel güncellemeler yapılırken, AI Fikir Çekirdeği'nin bölge renk/koordinat varsayımlarının (`REGION_CENTERS`, `REGIONS` renkleri) yeni tasarımla tutarlı kalıp kalmadığı ayrıca kontrol edilmelidir.
+
+### Sprint 6 Retrospective
+
+Tasarım ve kod tabanının ayrı araçlarda (Lovable / bu repo) ilerlemesi, görsel güncellemelerin dokümantasyona koddan önce girebildiğini gösterdi — bu README bölümü bilinçli olarak "henüz koda yansımadı" notuyla işaretlenmiştir ki ileride "iddia edilen ile kodda olan" karışmasın.
+
+Alınan kararlar:
+- Tasarım güncellemeleri koda aktarılana kadar, ilgili README bölümlerinde bunun açıkça belirtilmesi gerekir.
+
+---
+
 ## Kullanılan Teknolojiler ve Mimari
 
 ### Klasörler
