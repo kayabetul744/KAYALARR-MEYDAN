@@ -1,6 +1,6 @@
 # Meydan — içine gir.
 
-**🔗 Canlı (Güncel Hâli): [kayalarr-meydan.vercel.app](https://kayalarr-meydan.vercel.app)** — ana Meydan dünyası (AI Fikir Çekirdeği, katkı/onay/KP sistemi)
+**🔗 Canlı ( EN GÜNCEL HALİ): [kayalarr-meydan.vercel.app](https://kayalarr-meydan.vercel.app)** — ana Meydan dünyası (AI Fikir Çekirdeği, katkı/onay/KP sistemi)
 
 **🔗 Atölye (yedek erişim): [meydan-atolye.vercel.app](https://meydan-atolye.vercel.app)** — Atölye'nin bağımsız sürümü, ana sitede var olan bu bölüme erişilemezse diye ayrıca yayınlandı
 
