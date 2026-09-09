@@ -1232,6 +1232,10 @@ class Game {
       if (t) t.value = '';
     } else if (data.type === 'atolye:idea-error') {
       this._setIdeaStatus(data.message || 'Fikir gönderilemedi.', 'error');
+    } else if (data.type === 'atolye:contribution-created') {
+      this._setIdeaStatus('Katkın gönderildi, fikir sahibinin onayını bekliyor.', 'success');
+    } else if (data.type === 'atolye:contribution-error') {
+      this._setIdeaStatus(data.message || 'Katkı gönderilemedi.', 'error');
     }
   }
 
@@ -1256,12 +1260,53 @@ class Game {
       list.innerHTML = '<div class="idea-empty">Henüz fikir yok. İlk fikri sen paylaş!</div>';
       return;
     }
+    // Sadece gerçek (kalıcı ID'si olan) fikirlere katkı sunulabilir.
     list.innerHTML = ideas.slice(0, 20).map(i => {
       const author = i.ownerName || i.author || 'Anonim';
       const region = i.region || i.bolge || '';
       const kp = i.suggestedKp ?? i.onerilenKatkiPuani;
-      return `<div class="idea-item"><div class="idea-author">${this._esc(author)}</div><div class="idea-body">${this._esc(i.text)}</div><div class="idea-meta">${this._esc(region)}${kp != null ? ' · ' + this._esc(String(kp)) + ' KP' : ''}</div></div>`;
+      const contributeBtn = i.id != null
+        ? `<button class="idea-contribute-btn" data-idea-id="${i.id}">Atölyede inşa ettiğinle katkı sun</button>
+           <div class="idea-contribute-form" data-idea-id="${i.id}">
+             <textarea placeholder="Bu fikre ne katkı sunuyorsun? (Atölyede inşa ettiğin şeyi anlat)" maxlength="1000"></textarea>
+             <button class="idea-contribute-submit" data-idea-id="${i.id}">Gönder</button>
+           </div>`
+        : '';
+      return `<div class="idea-item"><div class="idea-author">${this._esc(author)}</div><div class="idea-body">${this._esc(i.text)}</div><div class="idea-meta">${this._esc(region)}${kp != null ? ' · ' + this._esc(String(kp)) + ' KP' : ''}</div>${contributeBtn}</div>`;
     }).join('');
+
+    list.querySelectorAll('.idea-contribute-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const form = list.querySelector(`.idea-contribute-form[data-idea-id="${btn.dataset.ideaId}"]`);
+        if (form) form.classList.toggle('open');
+      });
+    });
+    list.querySelectorAll('.idea-contribute-submit').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const form = btn.closest('.idea-contribute-form');
+        const textarea = form && form.querySelector('textarea');
+        const description = textarea ? textarea.value.trim() : '';
+        if (description.length < 3) {
+          this._setIdeaStatus('Katkı açıklamasını biraz daha uzun yaz.', 'error');
+          return;
+        }
+        this._submitContribution(Number(btn.dataset.ideaId), description);
+      });
+    });
+  }
+
+  _submitContribution(ideaId, description) {
+    const a = document.getElementById('ideaAuthor');
+    const contributorName = (a && a.value.trim()) || 'Anonim';
+    this._setIdeaStatus('Katkı gönderiliyor...', 'pending');
+    try {
+      window.parent.postMessage(
+        { type: 'atolye:propose-contribution', ideaId, contributorName, description },
+        window.location.origin,
+      );
+    } catch {
+      this._setIdeaStatus('Sunucuya ulaşılamadı.', 'error');
+    }
   }
 
   _esc(t) {

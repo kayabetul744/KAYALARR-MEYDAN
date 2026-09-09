@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { analyzeIdea } from "@/lib/idea-core-ai";
-import { saveIdea, listIdeas } from "@/lib/ideas-db";
+import { saveIdea, listIdeas, proposeContribution } from "@/lib/ideas-db";
 import { useMeydanUser } from "@/lib/use-meydan-user";
 
 export const Route = createFileRoute("/atolye")({
@@ -84,7 +84,14 @@ function AtolyePage() {
     async function handleMessage(event: MessageEvent) {
       if (event.origin !== window.location.origin) return;
       if (event.source !== iframeRef.current?.contentWindow) return;
-      const data = event.data as { type?: string; text?: string; author?: string } | null;
+      const data = event.data as {
+        type?: string;
+        text?: string;
+        author?: string;
+        ideaId?: number;
+        contributorName?: string;
+        description?: string;
+      } | null;
       if (!data || typeof data !== "object") return;
 
       if (data.type === "atolye:request-ideas") {
@@ -117,6 +124,29 @@ function AtolyePage() {
             type: "atolye:idea-error",
             message:
               err instanceof Error ? err.message : "Çekirdek şu anda analiz edemedi, tekrar dene.",
+          });
+        }
+        return;
+      }
+
+      if (data.type === "atolye:propose-contribution") {
+        const description = (data.description ?? "").trim();
+        const contributorName = (data.contributorName ?? "").trim() || userName || "Anonim";
+        const ideaId = data.ideaId;
+        if (!ideaId || description.length < 3) {
+          postToGame({
+            type: "atolye:contribution-error",
+            message: "Katkı açıklamasını biraz daha uzun yaz.",
+          });
+          return;
+        }
+        try {
+          await proposeContribution({ data: { ideaId, contributorName, description } });
+          postToGame({ type: "atolye:contribution-created" });
+        } catch (err) {
+          postToGame({
+            type: "atolye:contribution-error",
+            message: err instanceof Error ? err.message : "Katkı gönderilemedi.",
           });
         }
       }

@@ -49,6 +49,27 @@
     </div>
   </div>
 
+  <!-- Fikir panosu açma butonu (Türkçe: Meydan'ın katkı sistemine bağlanan panel) -->
+  <button id="ideaBoardToggle" class="idea-board-toggle" title="Fikir Panosu (E)">💡 Fikir Panosu</button>
+
+  <!-- Fikir paylaşım panosu -->
+  <div id="ideaBoard">
+    <div class="idea-card">
+      <h2>Fikir Panosu</h2>
+      <p class="idea-sub">Üretim Atölyesi'nde inşa ettiğinle Meydan'daki fikirlere katkı sun</p>
+      <div class="idea-form">
+        <input id="ideaAuthor" type="text" maxlength="20" placeholder="Adın" />
+        <textarea id="ideaText" maxlength="200" placeholder="Yeni bir fikir paylaş..."></textarea>
+        <div class="idea-actions">
+          <button id="ideaSubmit">Paylaş</button>
+          <button id="ideaClose">Kapat (ESC)</button>
+        </div>
+        <div id="ideaStatus" class="idea-status"></div>
+      </div>
+      <div id="ideaList" class="idea-list"></div>
+    </div>
+  </div>
+
   <!-- 加载进度 -->
   <div id="loadingBar">
     <div class="loading-text">生成世界中...</div>

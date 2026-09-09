@@ -33,7 +33,7 @@ Bugünkü sosyal platformlarda bir fikir paylaşılır, beğeni/yorum alır ve k
 | 5 | **Pazar** | Ürün paylaşılır, gerçek değer kazanmaya başlar |
 | 6 | **Başarı** | Fikir sahibi + tüm katkı verenler Katkı Puanı (KP) ile ödüllenir |
 
-Fikrin sahibi her aşamada sahip kalır; katkı verenler kendi KP'sini kendi emeğiyle kazanır. Bu akışın 3B dünya karşılığı bugün itibarıyla **gezilebilir** durumda; **fikir gönderimi, AI Fikir Çekirdeği'nin bölge yönlendirmesi, katkı/onay akışı ve kalıcı Katkı Puanı defteri artık gerçek** (bkz. [Sprint 4](#sprint-4) ve [Sprint 5](#sprint-5)). Gerçek bir kimlik doğrulama (NSosyal ile SSO) ve tam kapsamlı moderasyon ise henüz koda bağlanmamış, aşağıdaki [Sonraki Adımlar](#sonraki-adımlar) bölümünde planlanan işlevlerdir.
+Fikrin sahibi her aşamada sahip kalır; katkı verenler kendi KP'sini kendi emeğiyle kazanır. Bu akışın 3B dünya karşılığı bugün itibarıyla **gezilebilir** durumda; **fikir gönderimi, AI Fikir Çekirdeği'nin bölge yönlendirmesi, katkı/onay akışı ve kalıcı Katkı Puanı defteri artık gerçek** (bkz. [Sprint 4](#sprint-4) ve [Sprint 5](#sprint-5)). Gerçek zamanlı senkronizasyon ve temel toplum moderasyonu (bildir → otomatik gizle → şeffaf kayıt) da eklendi (bkz. [Sprint 6](#sprint-6)). Gerçek bir kimlik doğrulama (NSosyal ile SSO) ise NSosyal'in kendi altyapısına erişim gerektirdiği için henüz koda bağlanmadı — aşağıdaki [Sonraki Adımlar](#sonraki-adımlar) bölümünde tek kalan büyük madde budur.
 
 <p align="center">
   <img src="docs/ada_genel_gorunum.png" alt="Meydan — ada genel görünümü, 6 bölge ve merkez çekirdek" width="100%" />
@@ -329,17 +329,19 @@ Bu sprintte **iki ayrı hat birleştirildi**: tasarım ekibinin güncellediği y
 - **Gerçek Gemini anahtarı production'a (Vercel) eklendi** ve canlı ortamda ikinci, daha ciddi bir güvenilirlik hatası bulunup düzeltildi: şema, modelden `yapilar` alanında 14-26 adet 3B koordinat üretmesini istiyordu; model bunu güvenilir biçimde üretemiyor (genelde 2-3 nokta döndürüp şema doğrulamasını başarısız kılıyor), bu da AI SDK'nin dahili onarım/tekrar deneme döngüsünü tetikleyip isteğin kendi zaman aşımı süresini aşmasına yol açıyordu — sonuç, canlıda her istek sessizce `fallback`'e düşüyordu. Çözüm: koordinat üretimi modelden alınıp deterministik koda taşındı (`generateStructurePoints`, aynı `fallbackPlan`'ın kullandığı üretici); modelin işi artık yalnızca sınıflandırma (bölge/tema/başlık/renk/KP/uygunluk). Basit istekle gerçek üretim ~2-3 saniyeye indi ve doğrulama artık tutarlı geçiyor
 - Not: kullanılan Gemini anahtarı ücretsiz katmanda, dakikada 20 istek sınırı var; sınıra takılan bir istek AI SDK'nin backoff ile tekrar denemesi yüzünden birkaç on saniye sürebilir, bu yüzden sunucu tarafı zaman aşımı 30 saniyede tutuldu
 - **Production'a gerçek bir Postgres bağlandı** (Vercel'in Neon marketplace entegrasyonu üzerinden); `DATABASE_URL`/`POSTGRES_URL` otomatik enjekte edildi ve canlıda uçtan uca doğrulandı — bir fikir gönderildi, kalıcı olarak kaydedildi ve "Fikirler & Katkılar" panelinde göründü. Artık ana sitenin (`kayalarr-meydan.vercel.app`) **tamamı** (3B dünya, AI Fikir Çekirdeği, katkı/onay/KP defteri) gerçek altyapıyla canlıda çalışıyor
+- **Gerçek zamanlı senkronizasyon eklendi** (Pusher Channels üzerinden, ücretsiz katman) — bir fikir/katkı değiştiğinde açık tüm istemcilere <1 saniyede bildirim gidiyor, periyodik yenilemeyi beklemeden; 15sn'lik döngü artık yalnızca bu mekanizma sessizce başarısız olursa diye 60sn'lik bir yedek. İki ayrı tarayıcı sekmesinde uçtan uca doğrulandı: birinde gönderilen fikir/katkı diğerinde hiçbir işlem yapılmadan anında belirdi
+- **Temel toplum moderasyonu eklendi** — her fikir/katkının yanında bir "Bildir" (Spam/Uygunsuz/Diğer) seçeneği var; bir içerik en az iki farklı kullanıcı tarafından bildirilince otomatik gizleniyor (geri açma yok, kasıtlı). Gerçek bir admin rolü olmadığı için moderasyon şeffaflığa dayanıyor: gizlenen her şey, kim bildirdi/hangi gerekçeyle diye `/moderasyon` sayfasında herkese açık listeleniyor. İki farklı kullanıcı kimliğiyle uçtan uca doğrulandı: içerik 2. bildirimden sonra hem ana listeden hem de diğer açık sekmeden (gerçek zamanlı bildirimle) kayboldu, `/moderasyon`'da gerekçesiyle göründü
+- **Atölye'nin ve `/insa`'nın (Üretim Atölyesi / MineWorld) Fikir Panosu'na artık "katkı sun" özelliği eklendi** — panodaki her gerçek fikrin yanında bir "Atölyede inşa ettiğinle katkı sun" butonu var; oyuncu ne inşa ettiğini yazıp gönderdiğinde bu, `proposeContribution` ile aynı gerçek onay/KP akışına giren normal bir katkı oluyor. **Açıkça belirtmek gerekir:** bu, oyunun blok yerleştirmeni otomatik algılayıp katkı üretmesi değil — oyuncunun ne inşa ettiğini kendi yazdığı, sonra fikir sahibinin onayına sunulan bir akış (tıpkı ana sitedeki "Katkı Sun" gibi)
+- **`/insa` (MineWorld) da aynı Fikir Panosu köprüsüne bağlandı** — daha önce hiçbir sisteme bağlı olmayan, fikir panosu mekaniği bile içermeyen tamamen ayrı bir sandbox'tı; şimdi sağ üstteki "💡 Fikir Panosu" butonuyla (veya E tuşuyla) aynı gerçek AI + katkı sistemine erişiyor
 
 ### Şu An Gerçekten Çalışan Bütün
 
-**Bir kullanıcı gerçek bir fikir yazabiliyor → AI Fikir Çekirdeği (gerçek Gemini ile) onu doğru bölgeye yönlendirip bir başlık/tema/KP öneriyor → fikir kalıcı olarak kaydediliyor → başka bir kullanıcı ona katkı sunabiliyor → fikir sahibi onaylayabiliyor → onaylanan katkı gerçekten KP kazandırıp fikri bir sonraki bölgeye ilerletiyor → liderlik tablosunda görünüyor.** Bu döngü hem yerelde hem de **canlı ortamda** (`kayalarr-meydan.vercel.app`), gerçek bir AI anahtarı ve gerçek bir Postgres veritabanıyla uçtan uca test edilip doğrulanmıştır.
+**Bir kullanıcı gerçek bir fikir yazabiliyor → AI Fikir Çekirdeği (gerçek Gemini ile) onu doğru bölgeye yönlendirip bir başlık/tema/KP öneriyor → fikir kalıcı olarak kaydediliyor → başka bir kullanıcı (ana siteden, Atölye'den ya da `/insa`'dan) ona katkı sunabiliyor → fikir sahibi onaylayabiliyor → onaylanan katkı gerçekten KP kazandırıp fikri bir sonraki bölgeye ilerletiyor → liderlik tablosunda görünüyor.** Bu değişiklikler tüm açık istemcilere gerçek zamanlı yayılıyor; uygunsuz bir fikir/katkı topluluk tarafından bildirilip otomatik gizlenebiliyor, şeffaf bir kayıtla. Bu döngünün tamamı hem yerelde hem de **canlı ortamda** (`kayalarr-meydan.vercel.app`), gerçek bir AI anahtarı, gerçek bir Postgres veritabanı ve gerçek bir Pusher bağlantısıyla uçtan uca test edilip doğrulanmıştır.
 
 **Henüz gerçek olmayanlar (bilerek, açıkça):**
-- Atölye'de **blok koyup kırmak** hâlâ katkı sistemine bağlı değil — sadece görsel bir inşa sandbox'ı. Bağlanan kısım, Atölye'nin "Fikir Panosu"ndaki (E tuşu) fikir paylaşımı; blok inşası ile KP kazanma arasında henüz bir ilişki yok
-- `/insa` (Üretim Atölyesi / MineWorld) tamamen ayrı bir blok sandbox'ı, fikir panosu mekaniği bile yok — hiçbir sisteme bağlı değil
-- Gerçek kimlik doğrulama yok (NSosyal SSO yerine tarayıcı takma adı) — bu, NSosyal'in kendi kimlik doğrulama altyapısına erişim gerektirdiği için ekip dışı bir bağımlılık
-- Gerçek zamanlı (websocket) senkronizasyon yok, 15 saniyelik yenileme var
-- Tam kapsamlı moderasyon yok — yalnızca AI'nin kendi `uygunMu` sınıflandırması ve temel spam denetimi var, insan incelemesi/itiraz akışı yok
+- **Blok yerleştirme/kırmanın kendisi** hâlâ otomatik olarak katkıya dönüşmüyor — Atölye ve `/insa` hâlâ görsel birer inşa sandbox'ı; katkı, oyuncunun panoya elle yazdığı bir açıklamayla oluyor, blok sayısı/şekli okunup değerlendirilmiyor
+- Gerçek kimlik doğrulama yok (NSosyal SSO yerine tarayıcı takma adı) — bu, NSosyal'in kendi kimlik doğrulama altyapısına erişim gerektirdiği için ekip dışı bir bağımlılık; NSosyal'e paylaşıldıktan sonra ele alınması gereken tek madde budur
+- Moderasyon hâlâ tam kapsamlı değil — bildirilen içerik otomatik ve geri döndürülemez şekilde gizleniyor; insan hakemli bir itiraz/inceleme süreci (yanlışlıkla gizlenen bir içeriğin geri açılması gibi) yok
 - Kullanılan Gemini anahtarı ücretsiz katmanda (dakikada 20 istek sınırı); yoğun/art arda kullanımda ara sıra fallback'e düşebilir — bu durum arayüzde her zaman şeffafça belirtilir, gizlenmez
 
 ### Sprint 6 Ürün Görselleri
@@ -357,9 +359,10 @@ Bu sprintte **iki ayrı hat birleştirildi**: tasarım ekibinin güncellediği y
 
 ### Klasörler
 
-- `src/routes/` — TanStack Start dosya tabanlı route'lar: `/` (ana dünya), `/atolye` (Atölye giriş sayfası), `/insa` (blok inşa modu)
-- `src/components/` — `IdeaSquare.tsx` (ana 3B sahne bileşeni + "Fikrini Paylaş" paneli), `IdeasBrowser.tsx` ("Fikirler & Katkılar" paneli, liderlik tablosu), `AtolyeKapisi.tsx` / `BuildYard.tsx` (Atölye inşa modu — henüz katkı sistemine bağlı değil), `Joystick.tsx` (karakter kontrolü), `ui/` (shadcn tabanlı arayüz bileşenleri)
-- `src/lib/` — `voxel-world.ts` (voxel dünya üretimi: 6 bölge, çekirdek, NPC'ler), `istanbul-time.ts` (gündüz/gece saat mantığı), `seascape.ts` (ada çevresindeki deniz), `idea-core.ts` (Zod şeması, deterministik fallback, plan→voxel dönüşümü — izomorfik), `idea-core-ai.ts` (AI Fikir Çekirdeği'nin `createServerFn` sunucu fonksiyonu), `db.ts` (paylaşılan Postgres bağlantı havuzu), `ideas-db.ts` (fikir/katkı/KP `createServerFn`'leri — bunlar da sunucuda çalışır), `use-meydan-user.ts` (kalıcı takma ad hook'u)
+- `src/routes/` — TanStack Start dosya tabanlı route'lar: `/` (ana dünya), `/atolye` (Atölye giriş sayfası + Fikir Panosu köprüsü), `/insa` (MineWorld blok inşa modu + aynı köprü), `/moderasyon` (şeffaf, herkese açık moderasyon kaydı)
+- `src/components/` — `IdeaSquare.tsx` (ana 3B sahne bileşeni + "Fikrini Paylaş" paneli), `IdeasBrowser.tsx` ("Fikirler & Katkılar" paneli, liderlik tablosu, bildirme/moderasyon UI'ı), `Joystick.tsx` (karakter kontrolü), `ui/` (shadcn tabanlı arayüz bileşenleri)
+- `src/lib/` — `voxel-world.ts` (voxel dünya üretimi: 6 bölge, çekirdek, NPC'ler), `istanbul-time.ts` (gündüz/gece saat mantığı), `seascape.ts` (ada çevresindeki deniz), `idea-core.ts` (Zod şeması, deterministik fallback, plan→voxel dönüşümü — izomorfik), `idea-core-ai.ts` (AI Fikir Çekirdeği'nin `createServerFn` sunucu fonksiyonu), `db.ts` (paylaşılan Postgres bağlantı havuzu), `ideas-db.ts` (fikir/katkı/KP/moderasyon `createServerFn`'leri — bunlar da sunucuda çalışır), `pusher-server.ts` (gerçek zamanlı bildirim yayıncısı, sunucu-only), `use-meydan-realtime.ts` (istemci tarafı Pusher aboneliği), `use-meydan-user.ts` (kalıcı takma ad hook'u)
+- `public/game/`, `public/mineworld/` — Atölye ve `/insa`'nın bağımsız vanilla JS/Three.js oyun motorları; `js/game.js`'lerindeki Fikir Panosu, `postMessage` ile `atolye.tsx`/`insa.tsx`'e bağlanır (sunucu fonksiyonlarını doğrudan çağıramadıkları için)
 
 ### Mimari Genel Bakış
 
@@ -406,19 +409,18 @@ Bu sprintte **iki ayrı hat birleştirildi**: tasarım ekibinin güncellediği y
 
 ### Veri Katmanı (Sprint 5)
 
-- **Postgres** (`pg` istemcisi, Vercel Postgres/Neon uyumlu) — `meydan_ideas` ve `meydan_contributions` tabloları; ilk çağrıda şema otomatik oluşturulur (`ensureSchema`)
+- **Postgres** (`pg` istemcisi, Vercel Postgres/Neon uyumlu) — `meydan_ideas`, `meydan_contributions` ve `meydan_flags` tabloları; ilk çağrıda şema otomatik oluşturulur (`ensureSchema`)
 - **Katkı/onay akışı** — `proposeContribution` bir katkıyı `pending` olarak kaydeder; `decideContribution` yalnızca fikrin `owner_name`'iyle eşleşen isteklere onay/red izni verir (sunucu tarafında doğrulanır, istemciye güvenilmez)
 - **KP defteri ve bölge ilerlemesi** — onaylanan her katkı, katkı verene KP kazandırır ve fikri `nextRegion` ile bir sonraki bölgeye taşır; `getLeaderboard` bunları toplam KP'ye göre sıralar
-- **Basit çoklu kullanıcı senkronizasyonu** — `IdeasBrowser` açıkken 15 saniyede bir kendini tazeler; gerçek zamanlı (websocket/anlık) senkronizasyon henüz yok
+- **Temel toplum moderasyonu** — `reportIdea`/`reportContribution`, bir içerik en az `HIDE_THRESHOLD` (2) farklı kullanıcı tarafından bildirilince otomatik gizler; `listModerationQueue` gizlenen içeriği gerekçesiyle `/moderasyon` sayfasında şeffafça listeler
+- **Gerçek zamanlı senkronizasyon** (Sprint 6/Pusher Channels) — veri her değiştiğinde (`pusher-server.ts` → `notifyIdeasChanged`) tüm açık istemcilere websocket üzerinden anında bildirim gider (`use-meydan-realtime.ts`); yapılandırılmamışsa sessizce 60 saniyelik bir yedek yenilemeye düşer
 - Veritabanı bağlantısı tanımlı değilse "Fikirler & Katkılar" paneli anlaşılır bir hata gösterir; 3B dünya ve AI Fikir Çekirdeği bundan etkilenmez
 
 ## Sonraki Adımlar
 
-- Atölye'de **blok inşasının** da bir katkı biçimine dönüştürülmesi — şu an sadece Fikir Panosu (E tuşu) bağlı, bloklarla "neyi inşa ettiğinin fikre katkı sayılacağı" ayrı bir tasarım kararı gerektiriyor
-- `/insa` (MineWorld) sandbox'ının da aynı fikir panosu köprüsüne bağlanması
-- Gerçek kimlik doğrulama (NSosyal ile SSO) — NSosyal'in kendi kimlik doğrulama altyapısına erişim gerektirdiği için şu an ekip dışı bir bağımlılık; yalnızca tarayıcı başına kalıcı bir takma ad var, gerçek bir hesap sistemi değil
-- Tam kapsamlı içerik moderasyonu (şu an yalnızca temel spam denetimi ve AI'nin kendi `uygunMu` sınıflandırması var; insan incelemesi/itiraz akışı yok)
-- Gerçek zamanlı (websocket tabanlı) çoklu kullanıcı senkronizasyonu — periyodik yenilemenin yerini alacak; Vercel'in serverless fonksiyonları kalıcı websocket bağlantısını doğrudan desteklemediği için ayrı bir servise (ör. Pusher/Ably) ihtiyaç var
+- **Gerçek kimlik doğrulama (NSosyal ile SSO)** — NSosyal'in kendi kimlik doğrulama altyapısına erişim gerektirdiği için ekip dışı bir bağımlılık; ancak proje NSosyal'e paylaşıldıktan sonra ele alınabilir. Yalnızca tarayıcı başına kalıcı bir takma ad var, gerçek bir hesap sistemi değil
+- Blok yerleştirme/kırmanın kendisinin okunup otomatik bir katkı önerisine dönüştürülmesi — şu an oyuncu ne inşa ettiğini panoya elle yazıyor (bkz. Sprint 6); blokların sayısı/şekli/konumu değerlendirmeye girmiyor
+- İnsan hakemli bir moderasyon itiraz/inceleme akışı — şu an bildirilen içerik eşiğe ulaşınca otomatik ve kalıcı olarak gizleniyor, yanlışlıkla gizlenmiş bir içeriği geri açacak bir mekanizma yok
 
 ## Kurulum
 

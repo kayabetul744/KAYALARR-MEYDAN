@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { X, Check, Trash2, Trophy, Users } from "lucide-react";
+import { X, Check, Trash2, Trophy, Users, Flag } from "lucide-react";
 
 import {
   listIdeas,
@@ -7,10 +7,75 @@ import {
   listContributions,
   decideContribution,
   getLeaderboard,
+  reportIdea,
+  reportContribution,
 } from "@/lib/ideas-db";
 import type { IdeaRecord, ContributionRecord, LeaderboardEntry } from "@/lib/ideas-db";
+import { useMeydanRealtime } from "@/lib/use-meydan-realtime";
 
-const POLL_MS = 15_000;
+const REPORT_REASONS = [
+  { value: "spam", label: "Spam" },
+  { value: "uygunsuz", label: "Uygunsuz" },
+  { value: "diger", label: "Diğer" },
+] as const;
+
+function ReportButton({
+  onReport,
+  reported,
+}: {
+  onReport: (reason: "spam" | "uygunsuz" | "diger") => Promise<void>;
+  reported: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  if (reported) {
+    return <span className="text-[10px] text-muted-foreground">Bildirdin</span>;
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        aria-label="Bildir"
+        className="shrink-0 rounded-full p-1 text-muted-foreground/60 transition-colors hover:bg-destructive/15 hover:text-destructive"
+      >
+        <Flag className="h-3 w-3" />
+      </button>
+    );
+  }
+
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      {REPORT_REASONS.map((r) => (
+        <button
+          key={r.value}
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            await onReport(r.value);
+            setBusy(false);
+            setOpen(false);
+          }}
+          className="rounded-full border border-destructive/30 px-1.5 py-0.5 text-[10px] text-destructive hover:bg-destructive/10 disabled:opacity-50"
+        >
+          {r.label}
+        </button>
+      ))}
+      <button
+        onClick={() => setOpen(false)}
+        className="text-[10px] text-muted-foreground hover:underline"
+      >
+        vazgeç
+      </button>
+    </span>
+  );
+}
+
+// Pusher yapılandırılıysa veri değişikliği <1sn içinde işaret gelir (bkz.
+// use-meydan-realtime.ts); bu yalnızca o mekanizma sessizce başarısız
+// olursa (ağ hatası, Pusher devre dışı) diye bir yedek/güvenlik ağıdır.
+const FALLBACK_POLL_MS = 60_000;
 
 interface IdeasBrowserProps {
   currentUser: string;
@@ -43,9 +108,11 @@ export function IdeasBrowser({ currentUser, onClose }: IdeasBrowserProps) {
     }
   }, []);
 
+  const live = useMeydanRealtime(refresh);
+
   useEffect(() => {
     void refresh();
-    const id = window.setInterval(() => void refresh(), POLL_MS);
+    const id = window.setInterval(() => void refresh(), FALLBACK_POLL_MS);
     return () => window.clearInterval(id);
   }, [refresh]);
 
@@ -54,8 +121,16 @@ export function IdeasBrowser({ currentUser, onClose }: IdeasBrowserProps) {
       <div className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border/40 bg-card text-card-foreground shadow-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-border/40 px-5 py-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
+            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
               Meydan
+              {live && (
+                <span
+                  className="flex items-center gap-1 normal-case tracking-normal text-emerald-500"
+                  title="Gerçek zamanlı bağlantı aktif"
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> canlı
+                </span>
+              )}
             </p>
             <p className="text-sm font-semibold leading-tight">Fikirler &amp; Katkılar</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">Sen: {currentUser}</p>
@@ -195,6 +270,8 @@ function IdeaRow({
   const [busy, setBusy] = useState(false);
   const [rowError, setRowError] = useState<string | null>(null);
   const [pending, setPending] = useState<ContributionRecord[] | null>(null);
+  const [ideaReported, setIdeaReported] = useState(false);
+  const [reportedContribs, setReportedContribs] = useState<Set<number>>(new Set());
 
   const submitContribution = useCallback(async () => {
     const trimmed = description.trim();
@@ -264,7 +341,25 @@ function IdeaRow({
             </p>
           </div>
         </div>
-        <span className="shrink-0 text-[11px] text-muted-foreground">{idea.suggestedKp} KP</span>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span className="text-[11px] text-muted-foreground">{idea.suggestedKp} KP</span>
+          {!isOwner && (
+            <ReportButton
+              reported={ideaReported}
+              onReport={async (reason) => {
+                try {
+                  await reportIdea({
+                    data: { ideaId: idea.id, reporterName: currentUser, reason },
+                  });
+                  setIdeaReported(true);
+                  onChanged();
+                } catch {
+                  // sessizce yut: içerik zaten gizlenmiş/kaldırılmış olabilir
+                }
+              }}
+            />
+          )}
+        </span>
       </div>
 
       <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -303,7 +398,20 @@ function IdeaRow({
                     </p>
                     <p className="text-[11px] text-muted-foreground">{c.description}</p>
                   </div>
-                  <div className="flex shrink-0 gap-1">
+                  <div className="flex shrink-0 items-center gap-1">
+                    <ReportButton
+                      reported={reportedContribs.has(c.id)}
+                      onReport={async (reason) => {
+                        try {
+                          await reportContribution({
+                            data: { contributionId: c.id, reporterName: currentUser, reason },
+                          });
+                          setReportedContribs((prev) => new Set(prev).add(c.id));
+                        } catch {
+                          // sessizce yut
+                        }
+                      }}
+                    />
                     <button
                       onClick={() => void decide(c.id, "approved")}
                       disabled={busy}

@@ -643,7 +643,18 @@ class Game {
       loadingBar: document.getElementById('loadingBar'),
       loadingFill: document.getElementById('loadingFill'),
       controlsPanel: document.getElementById('controlsPanel'),
+      ideaBoard: document.getElementById('ideaBoard'),
+      ideaStatus: document.getElementById('ideaStatus'),
+      ideaBoardToggle: document.getElementById('ideaBoardToggle'),
     };
+
+    // Meydan uygulamasına (iframe parent) gerçek fikir/katkı gönderimi
+    // köprüsü — bkz. public/game/js/game.js'deki eşdeğer, /atolye için
+    // yazılan sürüm. Bağımsız bir dağıtımda parent bu mesajları dinlemez;
+    // bu durumda liste boş kalır, gönderim "sunucuya ulaşılamadı" hatası
+    // gösterir.
+    this.ideaOpen = false;
+    this._remoteIdeas = [];
 
     // 可选方块列表
     this.blockTypes = [
@@ -662,6 +673,7 @@ class Game {
     this._initHotbar();
     if (this.isMobile) this._initMobileHotbar();
     this._initEvents();
+    this._initIdeaBoard();
 
     // 设置预览视角：近距离平视"DENSITY"立墙
     this.camera.position.set(0, 23, 12);
@@ -895,6 +907,11 @@ class Game {
   _initEvents() {
     // 键盘事件（桌面端 + 移动端外接键盘通用）
     document.addEventListener('keydown', (e) => {
+      if (this.ideaOpen) {
+        if (e.code === 'Escape' || e.code === 'KeyE') this._closeIdeaBoard();
+        return;
+      }
+
       this.player.keys[e.code] = true;
 
       // 数字键选择方块
@@ -904,6 +921,11 @@ class Game {
           this.selectedSlot = idx;
           this._updateHotbar();
         }
+      }
+
+      if (e.code === 'KeyE' && this.isRunning) {
+        this._openIdeaBoard();
+        return;
       }
 
       // ESC 暂停（移动端也支持）
@@ -1085,6 +1107,153 @@ class Game {
       const mobileControls = document.getElementById('mobileControls');
       if (mobileControls) mobileControls.style.display = show ? 'block' : 'none';
     }
+    if (this.ui.ideaBoardToggle) this.ui.ideaBoardToggle.style.display = show ? 'block' : 'none';
+  }
+
+  /* ============================================
+     Fikir panosu — Meydan'ın katkı sistemine bağlantı
+     ============================================ */
+  _initIdeaBoard() {
+    const submit = document.getElementById('ideaSubmit');
+    const close = document.getElementById('ideaClose');
+    if (submit) submit.addEventListener('click', () => this._submitIdea());
+    if (close) close.addEventListener('click', () => this._closeIdeaBoard());
+    if (this.ui.ideaBoardToggle) {
+      this.ui.ideaBoardToggle.addEventListener('click', () => {
+        this.ideaOpen ? this._closeIdeaBoard() : this._openIdeaBoard();
+      });
+    }
+    window.addEventListener('message', (e) => this._onParentMessage(e));
+    this._renderIdeas();
+  }
+
+  _onParentMessage(e) {
+    const data = e.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type === 'atolye:ideas') {
+      this._remoteIdeas = Array.isArray(data.ideas) ? data.ideas : [];
+      this._renderIdeas();
+    } else if (data.type === 'atolye:idea-created') {
+      const idea = data.idea || {};
+      const kaynak = data.source === 'ai' ? 'AI Fikir Çekirdeği' : 'yedek sınıflandırıcı';
+      this._setIdeaStatus(
+        `Paylaşıldı → "${idea.title || idea.baslik || ''}" · ${idea.region || idea.bolge || ''} bölgesi · ${idea.suggestedKp ?? idea.onerilenKatkiPuani ?? '?'} KP (${kaynak})`,
+        'success',
+      );
+      const t = document.getElementById('ideaText');
+      if (t) t.value = '';
+    } else if (data.type === 'atolye:idea-error') {
+      this._setIdeaStatus(data.message || 'Fikir gönderilemedi.', 'error');
+    } else if (data.type === 'atolye:contribution-created') {
+      this._setIdeaStatus('Katkın gönderildi, fikir sahibinin onayını bekliyor.', 'success');
+    } else if (data.type === 'atolye:contribution-error') {
+      this._setIdeaStatus(data.message || 'Katkı gönderilemedi.', 'error');
+    }
+  }
+
+  _setIdeaStatus(msg, kind) {
+    const el = this.ui.ideaStatus;
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = 'idea-status' + (kind ? ' ' + kind : '');
+  }
+
+  _requestIdeas() {
+    try {
+      window.parent.postMessage({ type: 'atolye:request-ideas' }, window.location.origin);
+    } catch {}
+  }
+
+  _renderIdeas() {
+    const list = document.getElementById('ideaList');
+    if (!list) return;
+    const ideas = this._remoteIdeas;
+    if (!ideas.length) {
+      list.innerHTML = '<div class="idea-empty">Henüz fikir yok. İlk fikri sen paylaş!</div>';
+      return;
+    }
+    list.innerHTML = ideas.slice(0, 20).map(i => {
+      const author = i.ownerName || i.author || 'Anonim';
+      const region = i.region || i.bolge || '';
+      const kp = i.suggestedKp ?? i.onerilenKatkiPuani;
+      const contributeBtn = i.id != null
+        ? `<button class="idea-contribute-btn" data-idea-id="${i.id}">Üretim Atölyesi'nde inşa ettiğinle katkı sun</button>
+           <div class="idea-contribute-form" data-idea-id="${i.id}">
+             <textarea placeholder="Bu fikre ne katkı sunuyorsun?" maxlength="1000"></textarea>
+             <button class="idea-contribute-submit" data-idea-id="${i.id}">Gönder</button>
+           </div>`
+        : '';
+      return `<div class="idea-item"><div class="idea-author">${this._esc(author)}</div><div class="idea-body">${this._esc(i.text)}</div><div class="idea-meta">${this._esc(region)}${kp != null ? ' · ' + this._esc(String(kp)) + ' KP' : ''}</div>${contributeBtn}</div>`;
+    }).join('');
+
+    list.querySelectorAll('.idea-contribute-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const form = list.querySelector(`.idea-contribute-form[data-idea-id="${btn.dataset.ideaId}"]`);
+        if (form) form.classList.toggle('open');
+      });
+    });
+    list.querySelectorAll('.idea-contribute-submit').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const form = btn.closest('.idea-contribute-form');
+        const textarea = form && form.querySelector('textarea');
+        const description = textarea ? textarea.value.trim() : '';
+        if (description.length < 3) {
+          this._setIdeaStatus('Katkı açıklamasını biraz daha uzun yaz.', 'error');
+          return;
+        }
+        this._submitContribution(Number(btn.dataset.ideaId), description);
+      });
+    });
+  }
+
+  _esc(t) {
+    return String(t).replace(/[&<>"']/g, c => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  _submitIdea() {
+    const a = document.getElementById('ideaAuthor');
+    const t = document.getElementById('ideaText');
+    if (!t || !t.value.trim()) return;
+    const author = (a && a.value.trim()) || 'Anonim';
+    const text = t.value.trim();
+    this._setIdeaStatus('Gönderiliyor... (AI Fikir Çekirdeği analiz ediyor)', 'pending');
+    try {
+      window.parent.postMessage({ type: 'atolye:submit-idea', author, text }, window.location.origin);
+    } catch {
+      this._setIdeaStatus('Sunucuya ulaşılamadı.', 'error');
+    }
+  }
+
+  _submitContribution(ideaId, description) {
+    const a = document.getElementById('ideaAuthor');
+    const contributorName = (a && a.value.trim()) || 'Anonim';
+    this._setIdeaStatus('Katkı gönderiliyor...', 'pending');
+    try {
+      window.parent.postMessage(
+        { type: 'atolye:propose-contribution', ideaId, contributorName, description },
+        window.location.origin,
+      );
+    } catch {
+      this._setIdeaStatus('Sunucuya ulaşılamadı.', 'error');
+    }
+  }
+
+  _openIdeaBoard() {
+    if (!this.ui.ideaBoard) return;
+    this.ideaOpen = true;
+    this._setIdeaStatus('', null);
+    this._renderIdeas();
+    this._requestIdeas();
+    this.ui.ideaBoard.classList.add('open');
+    if (document.pointerLockElement) document.exitPointerLock();
+  }
+
+  _closeIdeaBoard() {
+    if (!this.ui.ideaBoard) return;
+    this.ideaOpen = false;
+    this.ui.ideaBoard.classList.remove('open');
   }
 
   /** 窗口大小变化处理 */

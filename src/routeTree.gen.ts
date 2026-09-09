@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AtolyeRouteImport } from './routes/atolye'
 import { Route as InsaRouteImport } from './routes/insa'
+import { Route as ModerasyonRouteImport } from './routes/moderasyon'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,35 +29,44 @@ const InsaRoute = InsaRouteImport.update({
   path: '/insa',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ModerasyonRoute = ModerasyonRouteImport.update({
+  id: '/moderasyon',
+  path: '/moderasyon',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/atolye': typeof AtolyeRoute
   '/insa': typeof InsaRoute
+  '/moderasyon': typeof ModerasyonRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/atolye': typeof AtolyeRoute
   '/insa': typeof InsaRoute
+  '/moderasyon': typeof ModerasyonRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/atolye': typeof AtolyeRoute
   '/insa': typeof InsaRoute
+  '/moderasyon': typeof ModerasyonRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/atolye' | '/insa'
+  fullPaths: '/' | '/atolye' | '/insa' | '/moderasyon'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/atolye' | '/insa'
-  id: '__root__' | '/' | '/atolye' | '/insa'
+  to: '/' | '/atolye' | '/insa' | '/moderasyon'
+  id: '__root__' | '/' | '/atolye' | '/insa' | '/moderasyon'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AtolyeRoute: typeof AtolyeRoute
   InsaRoute: typeof InsaRoute
+  ModerasyonRoute: typeof ModerasyonRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -82,6 +92,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InsaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/moderasyon': {
+      id: '/moderasyon'
+      path: '/moderasyon'
+      fullPath: '/moderasyon'
+      preLoaderRoute: typeof ModerasyonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AtolyeRoute: AtolyeRoute,
   InsaRoute: InsaRoute,
+  ModerasyonRoute: ModerasyonRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

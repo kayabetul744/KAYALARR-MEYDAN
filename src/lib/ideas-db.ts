@@ -12,6 +12,7 @@ import { z } from "zod";
 
 import { getPool } from "@/lib/db";
 import { ideaPlanSchema, nextRegion, type IdeaPlan, type RegionName } from "@/lib/idea-core";
+import { notifyIdeasChanged } from "@/lib/pusher-server";
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS meydan_ideas (
@@ -24,7 +25,9 @@ CREATE TABLE IF NOT EXISTS meydan_ideas (
   suggested_kp INTEGER NOT NULL,
   source TEXT NOT NULL,
   owner_name TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  flag_count INTEGER NOT NULL DEFAULT 0,
+  hidden BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE TABLE IF NOT EXISTS meydan_contributions (
@@ -35,9 +38,37 @@ CREATE TABLE IF NOT EXISTS meydan_contributions (
   status TEXT NOT NULL DEFAULT 'pending',
   kp_awarded INTEGER,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  decided_at TIMESTAMPTZ
+  decided_at TIMESTAMPTZ,
+  flag_count INTEGER NOT NULL DEFAULT 0,
+  hidden BOOLEAN NOT NULL DEFAULT false
 );
+
+-- Basit toplum-moderasyonu: gerçek bir kimlik doğrulama/admin sistemi
+-- olmadığı için (bkz. README > Sonraki Adımlar) moderasyon "kim şikayet
+-- etti" şeffaflığına dayanır; belirli bir eşiğe ulaşan içerik otomatik
+-- gizlenir, geri açma yok (kasıtlı — aksi halde herkes kendi/rakibinin
+-- bayrağını kaldırabilirdi).
+CREATE TABLE IF NOT EXISTS meydan_flags (
+  id SERIAL PRIMARY KEY,
+  target_type TEXT NOT NULL CHECK (target_type IN ('idea', 'contribution')),
+  target_id INTEGER NOT NULL,
+  reporter_name TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (target_type, target_id, reporter_name)
+);
+
+-- meydan_ideas/meydan_contributions daha önce (flag_count/hidden olmadan)
+-- oluşturulmuş olabilir; CREATE TABLE IF NOT EXISTS bu durumda sütunları
+-- eklemez, o yüzden burada ayrıca eklenir.
+ALTER TABLE meydan_ideas ADD COLUMN IF NOT EXISTS flag_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE meydan_ideas ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE meydan_contributions ADD COLUMN IF NOT EXISTS flag_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE meydan_contributions ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT false;
 `;
+
+/** Bu kadar farklı kullanıcı bir içeriği bildirince otomatik gizlenir. */
+const HIDE_THRESHOLD = 2;
 
 let schemaReady: Promise<void> | undefined;
 
@@ -67,6 +98,7 @@ export interface IdeaRecord {
   createdAt: string;
   pendingContributions: number;
   approvedContributions: number;
+  flagCount: number;
 }
 
 export interface ContributionRecord {
@@ -77,6 +109,7 @@ export interface ContributionRecord {
   status: "pending" | "approved" | "rejected";
   kpAwarded: number | null;
   createdAt: string;
+  flagCount: number;
 }
 
 function rowToIdea(row: Record<string, unknown>): IdeaRecord {
@@ -93,6 +126,7 @@ function rowToIdea(row: Record<string, unknown>): IdeaRecord {
     createdAt: String(row["created_at"]),
     pendingContributions: Number(row["pending_contributions"] ?? 0),
     approvedContributions: Number(row["approved_contributions"] ?? 0),
+    flagCount: Number(row["flag_count"] ?? 0),
   };
 }
 
@@ -105,6 +139,7 @@ function rowToContribution(row: Record<string, unknown>): ContributionRecord {
     status: row["status"] as ContributionRecord["status"],
     kpAwarded: row["kp_awarded"] == null ? null : Number(row["kp_awarded"]),
     createdAt: String(row["created_at"]),
+    flagCount: Number(row["flag_count"] ?? 0),
   };
 }
 
@@ -140,6 +175,7 @@ export const saveIdea = createServerFn({ method: "POST" })
         data.ownerName,
       ],
     );
+    notifyIdeasChanged();
     return rowToIdea(result.rows[0]);
   });
 
@@ -153,7 +189,8 @@ export const listIdeas = createServerFn({ method: "GET" }).handler(
       COUNT(*) FILTER (WHERE c.status = 'pending')::int AS pending_contributions,
       COUNT(*) FILTER (WHERE c.status = 'approved')::int AS approved_contributions
     FROM meydan_ideas i
-    LEFT JOIN meydan_contributions c ON c.idea_id = i.id
+    LEFT JOIN meydan_contributions c ON c.idea_id = i.id AND c.hidden = false
+    WHERE i.hidden = false
     GROUP BY i.id
     ORDER BY i.created_at DESC
     LIMIT 100
@@ -180,6 +217,7 @@ export const proposeContribution = createServerFn({ method: "POST" })
        VALUES ($1,$2,$3) RETURNING *`,
       [data.ideaId, data.contributorName, data.description],
     );
+    notifyIdeasChanged();
     return rowToContribution(result.rows[0]);
   });
 
@@ -189,7 +227,7 @@ export const listContributions = createServerFn({ method: "GET" })
   .handler(async ({ data: ideaId }): Promise<ContributionRecord[]> => {
     await ensureSchema();
     const result = await getPool().query(
-      `SELECT * FROM meydan_contributions WHERE idea_id = $1 ORDER BY created_at DESC`,
+      `SELECT * FROM meydan_contributions WHERE idea_id = $1 AND hidden = false ORDER BY created_at DESC`,
       [ideaId],
     );
     return result.rows.map(rowToContribution);
@@ -251,6 +289,7 @@ export const decideContribution = createServerFn({ method: "POST" })
       ]);
     }
 
+    notifyIdeasChanged();
     return { ok: true };
   });
 
@@ -277,5 +316,132 @@ export const getLeaderboard = createServerFn({ method: "GET" }).handler(
       totalKp: Number(r["total_kp"]),
       approvedCount: Number(r["approved_count"]),
     }));
+  },
+);
+
+const reasonSchema = z.enum(["spam", "uygunsuz", "diger"]);
+const REASON_LABELS: Record<z.infer<typeof reasonSchema>, string> = {
+  spam: "Spam",
+  uygunsuz: "Uygunsuz içerik",
+  diger: "Diğer",
+};
+
+async function applyFlag(
+  targetType: "idea" | "contribution",
+  targetId: number,
+  reporterName: string,
+  reason: z.infer<typeof reasonSchema>,
+): Promise<{ flagCount: number; hidden: boolean }> {
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO meydan_flags (target_type, target_id, reporter_name, reason)
+     VALUES ($1,$2,$3,$4)
+     ON CONFLICT (target_type, target_id, reporter_name) DO NOTHING`,
+    [targetType, targetId, reporterName, REASON_LABELS[reason]],
+  );
+  const count = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM meydan_flags WHERE target_type = $1 AND target_id = $2`,
+    [targetType, targetId],
+  );
+  const flagCount = Number(count.rows[0]["n"]);
+  const hidden = flagCount >= HIDE_THRESHOLD;
+  const table = targetType === "idea" ? "meydan_ideas" : "meydan_contributions";
+  await pool.query(`UPDATE ${table} SET flag_count = $1, hidden = $2 WHERE id = $3`, [
+    flagCount,
+    hidden,
+    targetId,
+  ]);
+  if (hidden) notifyIdeasChanged();
+  return { flagCount, hidden };
+}
+
+/**
+ * Bir fikri uygunsuz/spam olarak bildirir. Gerçek bir admin/moderatör
+ * rolü olmadığı için (bkz. README) eşiğe ulaşan içerik topluluk oyuyla
+ * otomatik gizlenir; kim bildirdiği ve neden `/moderasyon` sayfasında
+ * şeffafça görünür.
+ */
+export const reportIdea = createServerFn({ method: "POST" })
+  .validator((input: { ideaId: number; reporterName: string; reason: string }) =>
+    z
+      .object({
+        ideaId: z.number().int().positive(),
+        reporterName: ownerNameSchema,
+        reason: reasonSchema,
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }): Promise<{ flagCount: number; hidden: boolean }> => {
+    await ensureSchema();
+    return applyFlag("idea", data.ideaId, data.reporterName, data.reason);
+  });
+
+/** Bir katkıyı uygunsuz/spam olarak bildirir (bkz. `reportIdea`). */
+export const reportContribution = createServerFn({ method: "POST" })
+  .validator((input: { contributionId: number; reporterName: string; reason: string }) =>
+    z
+      .object({
+        contributionId: z.number().int().positive(),
+        reporterName: ownerNameSchema,
+        reason: reasonSchema,
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }): Promise<{ flagCount: number; hidden: boolean }> => {
+    await ensureSchema();
+    return applyFlag("contribution", data.contributionId, data.reporterName, data.reason);
+  });
+
+export interface ModerationEntry {
+  targetType: "idea" | "contribution";
+  targetId: number;
+  text: string;
+  ownerOrContributor: string;
+  flagCount: number;
+  reasons: string[];
+  hiddenAt: string;
+}
+
+/**
+ * Gizlenen tüm içerikleri, kim tarafından ve hangi gerekçeyle bildirildiğiyle
+ * birlikte listeler — `/moderasyon` sayfasında herkese açık şekilde gösterilir.
+ * Gerçek bir admin sistemi olmadığından şeffaflık burada moderasyonun
+ * kendisi: herkes neyin neden gizlendiğini görebilir.
+ */
+export const listModerationQueue = createServerFn({ method: "GET" }).handler(
+  async (): Promise<ModerationEntry[]> => {
+    await ensureSchema();
+    const pool = getPool();
+    const ideas = await pool.query(`
+      SELECT i.id, i.title AS text, i.owner_name, i.flag_count, i.created_at,
+        array_agg(f.reason) AS reasons
+      FROM meydan_ideas i
+      JOIN meydan_flags f ON f.target_type = 'idea' AND f.target_id = i.id
+      WHERE i.hidden = true
+      GROUP BY i.id
+    `);
+    const contributions = await pool.query(`
+      SELECT c.id, c.description AS text, c.contributor_name, c.flag_count, c.created_at,
+        array_agg(f.reason) AS reasons
+      FROM meydan_contributions c
+      JOIN meydan_flags f ON f.target_type = 'contribution' AND f.target_id = c.id
+      WHERE c.hidden = true
+      GROUP BY c.id
+    `);
+    const toEntry =
+      (targetType: "idea" | "contribution", ownerKey: string) =>
+      (row: Record<string, unknown>): ModerationEntry => ({
+        targetType,
+        targetId: Number(row["id"]),
+        text: String(row["text"]),
+        ownerOrContributor: String(row[ownerKey]),
+        flagCount: Number(row["flag_count"]),
+        reasons: row["reasons"] as string[],
+        hiddenAt: String(row["created_at"]),
+      });
+    return [
+      ...ideas.rows.map(toEntry("idea", "owner_name")),
+      ...contributions.rows.map(toEntry("contribution", "contributor_name")),
+    ];
   },
 );
