@@ -337,8 +337,8 @@ Bu sprintte **iki ayrı hat birleştirildi**: tasarım ekibinin güncellediği y
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/v2_ada_genel_gorunum.png" alt="Ada genel görünümü — MEYDAN tabelası" width="100%" /></td>
-    <td width="50%"><img src="docs/v2_pazar_bolgesi.png" alt="Pazar bölgesi — yeni tezgah düzeni" width="100%" /></td>
+    <td width="50%"><img src="docs/v2_atolye_giris.png" alt="Atölye giriş sayfası — 6 bölge kartı" width="100%" /></td>
+    <td width="50%"><img src="docs/v2_atolye_oyun.png" alt="Atölye 3B oyun ekranı — bölge sekmeleri ve kontroller" width="100%" /></td>
   </tr>
 </table>
 
