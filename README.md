@@ -328,10 +328,11 @@ Bu sprintte **iki ayrı hat birleştirildi**: tasarım ekibinin güncellediği y
 - Aynı pointer-lock/mavi ekran hatası (`WrongDocumentError`, iframe içinde `requestPointerLock` başarısız oluyordu) `/atolye` ve `/insa` oyunlarının kendi kod kopyalarında da bulunup düzeltildi — dünya artık pointer lock başarısız olsa bile render ediliyor, WASD ile oynanabiliyor
 - **Gerçek Gemini anahtarı production'a (Vercel) eklendi** ve canlı ortamda ikinci, daha ciddi bir güvenilirlik hatası bulunup düzeltildi: şema, modelden `yapilar` alanında 14-26 adet 3B koordinat üretmesini istiyordu; model bunu güvenilir biçimde üretemiyor (genelde 2-3 nokta döndürüp şema doğrulamasını başarısız kılıyor), bu da AI SDK'nin dahili onarım/tekrar deneme döngüsünü tetikleyip isteğin kendi zaman aşımı süresini aşmasına yol açıyordu — sonuç, canlıda her istek sessizce `fallback`'e düşüyordu. Çözüm: koordinat üretimi modelden alınıp deterministik koda taşındı (`generateStructurePoints`, aynı `fallbackPlan`'ın kullandığı üretici); modelin işi artık yalnızca sınıflandırma (bölge/tema/başlık/renk/KP/uygunluk). Basit istekle gerçek üretim ~2-3 saniyeye indi ve doğrulama artık tutarlı geçiyor
 - Not: kullanılan Gemini anahtarı ücretsiz katmanda, dakikada 20 istek sınırı var; sınıra takılan bir istek AI SDK'nin backoff ile tekrar denemesi yüzünden birkaç on saniye sürebilir, bu yüzden sunucu tarafı zaman aşımı 30 saniyede tutuldu
+- **Production'a gerçek bir Postgres bağlandı** (Vercel'in Neon marketplace entegrasyonu üzerinden); `DATABASE_URL`/`POSTGRES_URL` otomatik enjekte edildi ve canlıda uçtan uca doğrulandı — bir fikir gönderildi, kalıcı olarak kaydedildi ve "Fikirler & Katkılar" panelinde göründü. Artık ana sitenin (`kayalarr-meydan.vercel.app`) **tamamı** (3B dünya, AI Fikir Çekirdeği, katkı/onay/KP defteri) gerçek altyapıyla canlıda çalışıyor
 
 ### Şu An Gerçekten Çalışan Bütün
 
-**Bir kullanıcı gerçek bir fikir yazabiliyor → AI Fikir Çekirdeği (gerçek Gemini ile) onu doğru bölgeye yönlendirip bir başlık/tema/KP öneriyor → fikir kalıcı olarak kaydediliyor → başka bir kullanıcı ona katkı sunabiliyor → fikir sahibi onaylayabiliyor → onaylanan katkı gerçekten KP kazandırıp fikri bir sonraki bölgeye ilerletiyor → liderlik tablosunda görünüyor.** Bu döngü uçtan uca, gerçek bir AI anahtarı ve gerçek bir veritabanıyla test edilip doğrulanmıştır.
+**Bir kullanıcı gerçek bir fikir yazabiliyor → AI Fikir Çekirdeği (gerçek Gemini ile) onu doğru bölgeye yönlendirip bir başlık/tema/KP öneriyor → fikir kalıcı olarak kaydediliyor → başka bir kullanıcı ona katkı sunabiliyor → fikir sahibi onaylayabiliyor → onaylanan katkı gerçekten KP kazandırıp fikri bir sonraki bölgeye ilerletiyor → liderlik tablosunda görünüyor.** Bu döngü hem yerelde hem de **canlı ortamda** (`kayalarr-meydan.vercel.app`), gerçek bir AI anahtarı ve gerçek bir Postgres veritabanıyla uçtan uca test edilip doğrulanmıştır.
 
 **Henüz gerçek olmayanlar (bilerek, açıkça):**
 - Atölye'de **blok koyup kırmak** hâlâ katkı sistemine bağlı değil — sadece görsel bir inşa sandbox'ı. Bağlanan kısım, Atölye'nin "Fikir Panosu"ndaki (E tuşu) fikir paylaşımı; blok inşası ile KP kazanma arasında henüz bir ilişki yok
@@ -339,7 +340,7 @@ Bu sprintte **iki ayrı hat birleştirildi**: tasarım ekibinin güncellediği y
 - Gerçek kimlik doğrulama yok (NSosyal SSO yerine tarayıcı takma adı) — bu, NSosyal'in kendi kimlik doğrulama altyapısına erişim gerektirdiği için ekip dışı bir bağımlılık
 - Gerçek zamanlı (websocket) senkronizasyon yok, 15 saniyelik yenileme var
 - Tam kapsamlı moderasyon yok — yalnızca AI'nin kendi `uygunMu` sınıflandırması ve temel spam denetimi var, insan incelemesi/itiraz akışı yok
-- Canlı ortamda (`kayalarr-meydan.vercel.app`) henüz bir Postgres bağlantısı (`DATABASE_URL`/`POSTGRES_URL`) yok — 3B dünya ve AI Fikir Çekirdeği (artık gerçek anahtarla) canlıda çalışıyor, ama "Fikirler & Katkılar" paneli kalıcı kayıt için hâlâ yerel/test ortamına bağımlı
+- Kullanılan Gemini anahtarı ücretsiz katmanda (dakikada 20 istek sınırı); yoğun/art arda kullanımda ara sıra fallback'e düşebilir — bu durum arayüzde her zaman şeffafça belirtilir, gizlenmez
 
 ### Sprint 6 Ürün Görselleri
 
@@ -413,7 +414,6 @@ Bu sprintte **iki ayrı hat birleştirildi**: tasarım ekibinin güncellediği y
 
 ## Sonraki Adımlar
 
-- **Production'a bir Postgres bağlantısı (`DATABASE_URL`/Vercel Postgres) eklenmesi** — `GOOGLE_GENERATIVE_AI_API_KEY` artık canlıda tanımlı ve gerçek Gemini analiz çalışıyor, ancak katkı/onay/KP defterinin canlıda kalıcı çalışması için ayrıca bir veritabanı bağlantısı gerekiyor
 - Atölye'de **blok inşasının** da bir katkı biçimine dönüştürülmesi — şu an sadece Fikir Panosu (E tuşu) bağlı, bloklarla "neyi inşa ettiğinin fikre katkı sayılacağı" ayrı bir tasarım kararı gerektiriyor
 - `/insa` (MineWorld) sandbox'ının da aynı fikir panosu köprüsüne bağlanması
 - Gerçek kimlik doğrulama (NSosyal ile SSO) — NSosyal'in kendi kimlik doğrulama altyapısına erişim gerektirdiği için şu an ekip dışı bir bağımlılık; yalnızca tarayıcı başına kalıcı bir takma ad var, gerçek bir hesap sistemi değil
