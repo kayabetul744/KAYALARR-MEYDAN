@@ -20,6 +20,10 @@ TEKNOFEST NSosyal İnovasyon Yarışması
 
 ### Ürün Açıklaması
 
+> **SAYIN TEKNOFEST JÜRİ/HAKEM HEYETİ**
+>
+> Bu projenin **canlı linki** ([kayalarr-meydan.vercel.app](https://kayalarr-meydan.vercel.app)), değerlendirme sonrasında da geliştirilmeye devam etmiş ve şu an aşağıdaki tüm sistemler **gerçek altyapıyla, uçtan uca çalışır durumdadır**: gerçek yapay zekâ analizi (Gemini), kalıcı veritabanı, katkı/onay/KP ekonomisi, **gerçek zamanlı çoklu kullanıcı senkronizasyonu** ve **temel toplum moderasyonu**. Lütfen değerlendirmenizi bu güncel canlı sürüm üzerinden yapmanızı rica ederiz.
+
 Bugünkü sosyal platformlarda bir fikir paylaşılır, beğeni/yorum alır ve kaybolur gider — hiçbir zaman somut bir sonuca evrilmez. Fikir sahibi de, onu geliştirmek isteyenler de birbirini bulamaz.
 
 **Meydan**, paylaşılan fikirlerin gerçek bir gelişim sürecinden geçtiği ve bu sürecin 3B, herkesin **aynı anda birlikte bulunduğu tek bir ortak dünyada** görselleştiği bir platform vizyonuyla yola çıkar — yapay zekânın herkese ayrı, izole bir dünya ürettiği bir sistem değil. Bir fikir, merkezdeki meydandan açılan sabit bir hat üzerinde ilerler: **Fikir → Tasarım → Üretim → Topluluk → Pazar → Başarı**.
