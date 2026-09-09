@@ -285,64 +285,51 @@ Alınan kararlar:
 
 ## Sprint 5
 
-### Sprint 5 Notları
+Katkı/onay akışı ve kalıcı **Katkı Puanı (KP) defteri** gerçek bir veritabanına (Postgres) bağlandı: `saveIdea`/`listIdeas` fikirleri kalıcı olarak saklar; `proposeContribution`/`decideContribution` katkı sunma ve fikir sahibinin onay/red vermesini sağlar; onaylanan katkı **KP kazandırır ve fikri `nextRegion` ile bir sonraki bölgeye ilerletir** — görsel bir simülasyon değil, gerçek bir veri değişikliği. **"Fikirler & Katkılar"** paneli (liderlik tablosu dahil) ve temel bir spam/moderasyon denetimi eklendi.
 
-Sprint 4'ün retrospective'inde belirlenen öncelik doğrultusunda, Sprint 5 kapsamında katkı/onay akışı ve kalıcı Katkı Puanı (KP) defteri gerçek bir veritabanına bağlandı. Bu, "Farkımız" bölümünde anlatılan katkı sahipliği ve süreç şeffaflığı iddialarının artık koda karşılık gelmesini sağlar.
+**Doğrulama:** yerel bir Postgres'e karşı iki farklı kullanıcı kimliğiyle uçtan uca test edildi — katkı sun → onayla → bölge ilerlesin → liderlik tablosunda görün, hepsi çalıştı.
 
-### Sprint 5 Goal
+Aynı sprintte dünyaya yeni bir **Atölye** inşa alanı eklendi (bkz. Sprint 6) — meydandaki bir kapıdan girilen, blok yerleştirilebilen ayrı bir bölüm.
 
-Sprint 5'in hedefi; fikirleri ve katkıları kalıcı olarak saklayan bir veri katmanı kurmak, fikir sahibinin gelen katkıları onaylayıp/reddedebildiği bir arayüz sunmak, onaylanan katkıların KP kazandırıp fikri bir sonraki bölgeye ilerletmesini sağlamak ve temel bir moderasyon/spam denetimi eklemektir.
+#### Sprint 5 Güncel Görünüm
 
-### Sprint 5'te Tamamlanan İşler
+<table>
+  <tr>
+    <td width="50%"><img src="docs/v2_ada_genel_gorunum.png" alt="Ada genel görünümü" width="100%" /></td>
+    <td width="50%"><img src="docs/v2_ada_gece_gorunum.png" alt="Ada gece görünümü" width="100%" /></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/v2_pazar_bolgesi.png" alt="Pazar bölgesi" width="100%" /></td>
+    <td width="50%"><img src="docs/v2_basari_bolgesi.png" alt="Başarı bölgesi" width="100%" /></td>
+  </tr>
+</table>
 
-**Done**
-- Postgres şeması (`meydan_ideas`, `meydan_contributions`) — Vercel Postgres/Neon ile çalışacak şekilde `pg` istemcisiyle kuruldu (`src/lib/db.ts`, `src/lib/ideas-db.ts`)
-- `saveIdea` / `listIdeas`: her fikir artık AI/fallback analizinden sonra kalıcı olarak kaydediliyor ve listelenebiliyor
-- `proposeContribution` / `listContributions` / `decideContribution`: katkı sunma, fikir sahibinin görmesi ve onaylama/reddetme — onaylanan katkı katkı verene KP kazandırır, fikri `nextRegion` ile bir sonraki bölgeye ilerletir
-- `getLeaderboard`: onaylanan katkılara göre toplam KP sıralaması
-- **"Fikirler & Katkılar"** arayüz paneli (`IdeasBrowser.tsx`): fikirleri gezme, katkı sunma, kendi fikrine gelen katkıları onaylama/reddetme, liderlik tablosu — 15 saniyede bir kendini tazeler (basit çoklu kullanıcı senkronizasyonu)
-- Kalıcı takma ad (`use-meydan-user.ts`, `localStorage`) — gerçek kimlik doğrulama olmadan "kim kimdir" sorusuna cevap veren, pilot ölçekte yeterli bir çözüm
-- Temel moderasyon: `ideaPlanSchema`'ya eklenen `uygunMu` alanı (AI kullanılabiliyorsa modelin kendi sınıflandırması), fallback için basit spam/anlamsız-içerik denetimi (`looksLikeSpam`)
-
-### Sprint 5 Ürün Durumu
-
-Sprint 5 sonunda bir kullanıcı fikrini paylaşabiliyor, başka bir kullanıcı buna katkı sunabiliyor, fikir sahibi katkıyı onaylayabiliyor — onaylandığında katkı veren KP kazanıyor ve fikir gerçekten bir sonraki bölgeye ilerliyor (görsel bir simülasyon değil, veritabanındaki gerçek bir durum değişikliği). Bu akış, yerel bir Postgres'e karşı iki farklı takma adla (fikir sahibi / katkı veren) uçtan uca test edilmiştir: katkı sunma → onaylama → bölge ilerlemesi → liderlik tablosunda görünme, hepsi doğrulanmıştır. Gerçek zamanlı (websocket) senkronizasyon henüz bu kapsamda değildir (bkz. [Sonraki Adımlar](#sonraki-adımlar)).
-
-**Sprint 5 sonrası ek doğrulama:** Gerçek bir Google AI Studio API anahtarıyla test edilirken, varsayılan model olarak seçilen `gemini-2.5-flash`'ın Google tarafından yeni kullanıcılara kapatıldığı ve `gemini-3.6-flash`'a geçilmesi gerektiği canlı olarak ortaya çıktı; varsayılan model buna göre güncellendi (teknik rapordaki `google/gemini-3.7-flash` tahmini, Gemini'nin 3.x nesline geçtiğini doğruladı). Aynı testte, uzun Türkçe kelimeler içeren bir fikir metninde `fallbackPlan`'ın ürettiği başlığın 60 karakter sınırını aşıp `saveIdea`'yı Zod hatasıyla başarısız kıldığı gerçek bir hata da yakalanıp düzeltildi. Bu düzeltmelerden sonra gerçek Gemini çağrısı `"YAPAY ZEKÂ İLE ANALİZ EDİLDİ"` kaynağıyla, anlamlı bir başlık/bölge/tema/KP üreterek uçtan uca doğrulanmıştır — AI Fikir Çekirdeği artık yalnızca doğru bağlanmış değil, gerçekten çalıştığı kanıtlanmış durumdadır.
-
-### Sprint 5 Review
-
-Sprint 5 sonunda ekip, katkı/onay akışının uçtan uca çalıştığını iki farklı kullanıcı kimliğiyle birlikte test etmiştir. Sprint 4'ün retrospective kararı (katkı/onay ve KP defterine öncelik) karşılanmıştır.
-
-Alınan kararlar:
-- Vercel Postgres/Neon bağlantısı olmadan da uygulamanın çökmemesi (anlaşılır bir hata gösterip 3B dünyanın çalışmaya devam etmesi) kalıcı bir tasarım kuralı olarak korunacaktır.
-- Gerçek kimlik doğrulama (NSosyal SSO) gelene kadar takma ad tabanlı sahiplik modelinin pilot/demo amaçlı yeterli olduğu, ancak üretim sürümü için yetersiz olduğu not edilmiştir.
-
-### Sprint 5 Retrospective
-
-Veritabanı bağlantı dizesinin (`DATABASE_URL`) Vercel Postgres ile Neon'un serverless sürücüsü yerine standart `pg` istemcisiyle okunması, kodu hem yerel Postgres'e hem Vercel'e karşı aynı şekilde çalışır kıldı — bu, bir önceki sprintin "framework'e özgü konvansiyonlar doğrulanmadan varsayılmamalı" dersinin bir uzantısı olarak, mümkün olduğunda standart/taşınabilir arayüzlerin tercih edilmesi gerektiğini gösterdi.
-
-Alınan kararlar:
-- Yeni bir veri katmanı eklenirken, sağlayıcıya özel SDK'lar yerine önce standart protokolün (burada düz Postgres bağlantısı) yeterli olup olmadığı değerlendirilmelidir.
-- Sahiplik/onay gibi yetki gerektiren her sunucu fonksiyonunda, yetki kontrolü (burada `ownerName` eşleşmesi) istemciye değil sunucuya konulmalıdır.
+**Kalan işler:** gerçek zamanlı (websocket) senkronizasyon henüz yok, katkı/onay şu an yalnızca metinle yapılıyor (bkz. [Sonraki Adımlar](#sonraki-adımlar)).
 
 ---
 
 ## Sprint 6
 
-### Sprint 6 Notları
+Bu sprintte **iki ayrı hat birleştirildi**: tasarım ekibinin güncellediği yeni dünya (Lovable) ile daha önce kurulan AI Fikir Çekirdeği + katkı/onay/KP sistemi.
 
-Dünyanın görsel tasarımı güncellendi (merkeze **"MEYDAN"** tabelası, yeniden tasarlanan **Başarı** ve **Pazar** bölgeleri) ve yeni bir **Atölye** alanı eklendi — Minecraft tarzı, serbestçe blok koyup kırabildiğin bağımsız bir inşa modu (`/atolye`, `/insa`).
+### Tamamlanan İşler
 
-### Sprint 6'da Tamamlanan İşler
+- **Yeni dünya tasarımı koda aktarıldı:** ada merkezine büyük **"MEYDAN"** tabelası, yeniden tasarlanan **Başarı** (pergolalı ödül tapınağı) ve **Pazar** (tezgah düzeni) bölgeleri, bölge isimlerinin haritada okunaklı etiketlerle gösterilmesi
+- **Yeni: Atölye** — meydanda **Üretim Atölyesi kapısından** girilen, `/atolye` üzerinden 6 bölgeye tematik kartlarla ulaşılan, `/insa` sayfasında blok yerleştirip kırabildiğin bağımsız bir 3B inşa alanı
+- **AI Fikir Çekirdeği + katkı/onay/KP sistemi yeni tasarıma yeniden bağlandı** — "Fikrini Paylaş" ve "Fikirler & Katkılar" panelleri, tüm sunucu fonksiyonları (`idea-core-ai.ts`, `ideas-db.ts`, `db.ts`) hiçbir veri kaybı olmadan yeni koda taşındı
+- **Gerçek bir hata bulundu ve düzeltildi:** `gemini-3.6-flash` varsayılan olarak "thinking" (derin düşünme) modunda çalışıyor ve bu, isteklerin 25 saniyeyi aşarak zaman aşımına uğramasına yol açıyordu; `thinkingLevel: "low"` ayarıyla çözüldü
+- **Gerçek Gemini anahtarıyla yeniden doğrulandı:** düzeltmeden sonra birden fazla fikir gönderimi **"YAPAY ZEKÂ İLE ANALİZ EDİLDİ"** kaynağıyla, tutarlı ve anlamlı sonuçlar üretti (bkz. örnek: "Sokak Hayvanları Ortak Besleme Noktaları" → Topluluk bölgesi, 65 KP)
+- `npm run build` ile client bundle'ın `pg`/AI SDK kodu içermediği yeniden doğrulandı
 
-**Done — koda aktarıldı, build ve tarayıcıda doğrulandı**
-- Ada merkezine büyük **"MEYDAN"** 3B tabela eklendi
-- **Başarı** bölgesi pergolalı bir ödül/tapınak yapısına, **Pazar** bölgesi koyu tonlu tezgah düzenine dönüştürüldü
-- **Yeni: Atölye** — `/atolye` sayfasından 6 bölgeye (Fikir/Tasarım/Üretim/Topluluk/Pazar/Başarı) tematik giriş kartlarıyla ulaşılan, `/insa` sayfasında WASD ile gezilen, sol/sağ tık ile blok koyup kırabildiğin bağımsız bir 3B inşa modu
+### Şu An Gerçekten Çalışan Bütün
 
-**Devam Eden — henüz yapılmadı**
-- Atölye'de inşa edilen bloklar hiçbir yere kaydedilmiyor ve mevcut katkı/onay/KP sistemine **bağlı değil** (bkz. [Sonraki Adımlar](#sonraki-adımlar))
+**Bir kullanıcı gerçek bir fikir yazabiliyor → AI Fikir Çekirdeği (gerçek Gemini ile) onu doğru bölgeye yönlendirip bir başlık/tema/KP öneriyor → fikir kalıcı olarak kaydediliyor → başka bir kullanıcı ona katkı sunabiliyor → fikir sahibi onaylayabiliyor → onaylanan katkı gerçekten KP kazandırıp fikri bir sonraki bölgeye ilerletiyor → liderlik tablosunda görünüyor.** Bu döngü uçtan uca, gerçek bir AI anahtarı ve gerçek bir veritabanıyla test edilip doğrulanmıştır.
+
+**Henüz gerçek olmayanlar (bilerek, açıkça):**
+- Atölye'de inşa edilen bloklar bu katkı sistemine **henüz bağlı değil** — ayrı bir sandbox
+- Gerçek kimlik doğrulama yok (NSosyal SSO yerine tarayıcı takma adı)
+- Gerçek zamanlı (websocket) senkronizasyon yok, 15 saniyelik yenileme var
+- Tam kapsamlı moderasyon yok
 
 ### Sprint 6 Ürün Görselleri
 
@@ -352,17 +339,6 @@ Dünyanın görsel tasarımı güncellendi (merkeze **"MEYDAN"** tabelası, yeni
     <td width="50%"><img src="docs/v2_pazar_bolgesi.png" alt="Pazar bölgesi — yeni tezgah düzeni" width="100%" /></td>
   </tr>
 </table>
-<p align="center">
-  <img src="docs/v2_basari_bolgesi.png" alt="Başarı bölgesi — pergolalı ödül tapınağı" width="60%" />
-</p>
-
-### Sprint 6 Review
-
-Yeni tasarımın bölgelerin işlevini daha net anlattığı, Atölye'nin ise "gerçek oyun hissini" güçlendirdiği değerlendirilmiştir — ancak Atölye şu an mevcut fikir/katkı ekonomisinden **bağımsız** bir sandbox; bir sonraki adımda buna bağlanması gerekiyor.
-
-### Sprint 6 Retrospective
-
-Tasarım güncellemeleri, önce görsel/deneyim olarak doğrulanıp sonra veri katmanına bağlanacak şekilde aşamalı ilerletildi — bu, önceki sprintlerde de izlenen "önce görsel, sonra backend" yaklaşımıyla tutarlı.
 
 ---
 

@@ -75,8 +75,8 @@ export const analyzeIdea = createServerFn({ method: "POST" })
         abortSignal: AbortSignal.timeout(30_000),
         providerOptions: {
           // Bu sınıflandırma/planlama görevi için derin "thinking" gerekmiyor;
-          // kapatmak gecikmeyi ciddi ölçüde azaltıyor (bkz. Sprint 6 notları).
-          google: { thinkingConfig: { thinkingBudget: 0 } },
+          // düşük seviye tutmak gecikmeyi ciddi ölçüde azaltıyor (bkz. Sprint 6 notları).
+          google: { thinkingConfig: { thinkingLevel: "low" } },
         },
       });
       return { plan: object, source: "ai" };
