@@ -2,7 +2,7 @@
 
 **🔗 Canlı (Güncel Hâli): [kayalarr-meydan.vercel.app](https://kayalarr-meydan.vercel.app)** — ana Meydan dünyası (AI Fikir Çekirdeği, katkı/onay/KP sistemi)
 
-**🔗 Atölye (yedek erişim): [meydan-atolye.vercel.app](https://meydan-atolye.vercel.app)** — Atölye'nin bağımsız sürümü, ana siteye erişilemezse diye ayrıca yayınlandı
+**🔗 Atölye (yedek erişim): [meydan-atolye.vercel.app](https://meydan-atolye.vercel.app)** — Atölye'nin bağımsız sürümü, ana sitede var olan bu bölüme erişilemezse diye ayrıca yayınlandı
 
 ## Takım İsmi
 
