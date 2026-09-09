@@ -1,5 +1,8 @@
 # Meydan — içine gir.
 
+> **SAYIN TEKNOFEST JÜRİ/HAKEM HEYETİ**
+>
+> Bu projenin **canlı linki** ([kayalarr-meydan.vercel.app](https://kayalarr-meydan.vercel.app)), değerlendirme sonrasında da geliştirilmeye devam etmiş ve şu an aşağıdaki tüm sistemler **gerçek altyapıyla, uçtan uca çalışır durumdadır**: gerçek yapay zekâ analizi (Gemini), kalıcı veritabanı, katkı/onay/KP ekonomisi, **gerçek zamanlı çoklu kullanıcı senkronizasyonu** ve **temel toplum moderasyonu**. Lütfen değerlendirmenizi bu güncel canlı sürüm üzerinden yapmanızı rica ederiz.
 **🔗 Canlı ( EN GÜNCEL HALİ): [kayalarr-meydan.vercel.app](https://kayalarr-meydan.vercel.app)** — ana Meydan dünyası (AI Fikir Çekirdeği, katkı/onay/KP sistemi)
 
 **🔗 Atölye (yedek erişim): [meydan-atolye.vercel.app](https://meydan-atolye.vercel.app)** — Atölye'nin bağımsız sürümü, ana sitede var olan bu bölüme erişilemezse diye ayrıca yayınlandı
@@ -20,9 +23,7 @@ TEKNOFEST NSosyal İnovasyon Yarışması
 
 ### Ürün Açıklaması
 
-> **SAYIN TEKNOFEST JÜRİ/HAKEM HEYETİ**
->
-> Bu projenin **canlı linki** ([kayalarr-meydan.vercel.app](https://kayalarr-meydan.vercel.app)), değerlendirme sonrasında da geliştirilmeye devam etmiş ve şu an aşağıdaki tüm sistemler **gerçek altyapıyla, uçtan uca çalışır durumdadır**: gerçek yapay zekâ analizi (Gemini), kalıcı veritabanı, katkı/onay/KP ekonomisi, **gerçek zamanlı çoklu kullanıcı senkronizasyonu** ve **temel toplum moderasyonu**. Lütfen değerlendirmenizi bu güncel canlı sürüm üzerinden yapmanızı rica ederiz.
+
 
 Bugünkü sosyal platformlarda bir fikir paylaşılır, beğeni/yorum alır ve kaybolur gider — hiçbir zaman somut bir sonuca evrilmez. Fikir sahibi de, onu geliştirmek isteyenler de birbirini bulamaz.
 
