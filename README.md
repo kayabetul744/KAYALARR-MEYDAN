@@ -326,6 +326,8 @@ Bu sprintte **iki ayrı hat birleştirildi**: tasarım ekibinin güncellediği y
 - `npm run build` ile client bundle'ın `pg`/AI SDK kodu içermediği yeniden doğrulandı
 - **Atölye'nin (`/atolye`) "Fikir Panosu"su gerçek AI Fikir Çekirdeği + katkı sistemine bağlandı:** oyun vanilla JS/iframe içinde çalıştığı için sunucu fonksiyonlarını doğrudan çağıramıyor; bu yüzden bir `postMessage` köprüsü kuruldu (`public/game/js/game.js` ↔ `src/routes/atolye.tsx`). Panoda paylaşılan bir fikir artık gerçekten `analyzeIdea` (Gemini/fallback) ile analiz edilip `saveIdea` ile aynı Postgres deftere kaydediliyor — daha önce sadece `localStorage`'a yazan, tamamen ayrı bir sahte pano idi. Uçtan uca, yerel bir Postgres'e karşı gerçek bir istekle doğrulandı: Atölye'de paylaşılan fikir hem oyunun kendi panosunda hem de ana sayfadaki "Fikirler & Katkılar" panelinde aynı kayıt olarak görüldü
 - Aynı pointer-lock/mavi ekran hatası (`WrongDocumentError`, iframe içinde `requestPointerLock` başarısız oluyordu) `/atolye` ve `/insa` oyunlarının kendi kod kopyalarında da bulunup düzeltildi — dünya artık pointer lock başarısız olsa bile render ediliyor, WASD ile oynanabiliyor
+- **Gerçek Gemini anahtarı production'a (Vercel) eklendi** ve canlı ortamda ikinci, daha ciddi bir güvenilirlik hatası bulunup düzeltildi: şema, modelden `yapilar` alanında 14-26 adet 3B koordinat üretmesini istiyordu; model bunu güvenilir biçimde üretemiyor (genelde 2-3 nokta döndürüp şema doğrulamasını başarısız kılıyor), bu da AI SDK'nin dahili onarım/tekrar deneme döngüsünü tetikleyip isteğin kendi zaman aşımı süresini aşmasına yol açıyordu — sonuç, canlıda her istek sessizce `fallback`'e düşüyordu. Çözüm: koordinat üretimi modelden alınıp deterministik koda taşındı (`generateStructurePoints`, aynı `fallbackPlan`'ın kullandığı üretici); modelin işi artık yalnızca sınıflandırma (bölge/tema/başlık/renk/KP/uygunluk). Basit istekle gerçek üretim ~2-3 saniyeye indi ve doğrulama artık tutarlı geçiyor
+- Not: kullanılan Gemini anahtarı ücretsiz katmanda, dakikada 20 istek sınırı var; sınıra takılan bir istek AI SDK'nin backoff ile tekrar denemesi yüzünden birkaç on saniye sürebilir, bu yüzden sunucu tarafı zaman aşımı 30 saniyede tutuldu
 
 ### Şu An Gerçekten Çalışan Bütün
 
@@ -337,7 +339,7 @@ Bu sprintte **iki ayrı hat birleştirildi**: tasarım ekibinin güncellediği y
 - Gerçek kimlik doğrulama yok (NSosyal SSO yerine tarayıcı takma adı) — bu, NSosyal'in kendi kimlik doğrulama altyapısına erişim gerektirdiği için ekip dışı bir bağımlılık
 - Gerçek zamanlı (websocket) senkronizasyon yok, 15 saniyelik yenileme var
 - Tam kapsamlı moderasyon yok — yalnızca AI'nin kendi `uygunMu` sınıflandırması ve temel spam denetimi var, insan incelemesi/itiraz akışı yok
-- Canlı ortamda (`kayalarr-meydan.vercel.app`) `GOOGLE_GENERATIVE_AI_API_KEY` henüz tanımlı değil — yerelde uçtan uca doğrulandı ama üretimde şu an her istek fallback'e düşüyor
+- Canlı ortamda (`kayalarr-meydan.vercel.app`) henüz bir Postgres bağlantısı (`DATABASE_URL`/`POSTGRES_URL`) yok — 3B dünya ve AI Fikir Çekirdeği (artık gerçek anahtarla) canlıda çalışıyor, ama "Fikirler & Katkılar" paneli kalıcı kayıt için hâlâ yerel/test ortamına bağımlı
 
 ### Sprint 6 Ürün Görselleri
 
@@ -411,7 +413,7 @@ Bu sprintte **iki ayrı hat birleştirildi**: tasarım ekibinin güncellediği y
 
 ## Sonraki Adımlar
 
-- **Gerçek Gemini anahtarının üretim ortamına (Vercel) eklenmesi** — yerel olarak ve `/atolye` üzerinden uçtan uca doğrulandı, ancak canlı dağıtımda (`kayalarr-meydan.vercel.app`) henüz `GOOGLE_GENERATIVE_AI_API_KEY` tanımlı değil, bu yüzden üretimde her istek şu an fallback'e düşüyor. Bu, projeyi yürüten kişinin kendi Vercel hesabında panelden ekleyebileceği tek adımlık bir ayar (bkz. [Kurulum](#kurulum))
+- **Production'a bir Postgres bağlantısı (`DATABASE_URL`/Vercel Postgres) eklenmesi** — `GOOGLE_GENERATIVE_AI_API_KEY` artık canlıda tanımlı ve gerçek Gemini analiz çalışıyor, ancak katkı/onay/KP defterinin canlıda kalıcı çalışması için ayrıca bir veritabanı bağlantısı gerekiyor
 - Atölye'de **blok inşasının** da bir katkı biçimine dönüştürülmesi — şu an sadece Fikir Panosu (E tuşu) bağlı, bloklarla "neyi inşa ettiğinin fikre katkı sayılacağı" ayrı bir tasarım kararı gerektiriyor
 - `/insa` (MineWorld) sandbox'ının da aynı fikir panosu köprüsüne bağlanması
 - Gerçek kimlik doğrulama (NSosyal ile SSO) — NSosyal'in kendi kimlik doğrulama altyapısına erişim gerektirdiği için şu an ekip dışı bir bağımlılık; yalnızca tarayıcı başına kalıcı bir takma ad var, gerçek bir hesap sistemi değil

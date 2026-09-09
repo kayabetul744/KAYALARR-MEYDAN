@@ -57,6 +57,18 @@ export const ideaPlanSchema = z.object({
   uygunMu: z.boolean(),
 });
 
+/**
+ * Modelin gerçekten ürettiği alanlar — "yapilar" (14-26 3B koordinat) burada
+ * yok. Bu, mekanik/prosedürel bir görev olduğu ve modelin bunu güvenilir bir
+ * şekilde üretemediği (bkz. Sprint 6 sonrası test: model tutarlı biçimde 2-3
+ * nokta üretip şema doğrulamasını başarısız kılıyor, bu da AI SDK'nin dahili
+ * onarım/tekrar deneme döngüsünü tetikleyip zaman aşımına yol açıyordu)
+ * ölçülerek ayrıldı. Modelin asıl katkısı sınıflandırma; koordinat üretimi
+ * `generateStructurePoints` ile deterministik olarak yapılır (bkz. idea-core-ai.ts).
+ */
+export const aiIdeaPlanSchema = ideaPlanSchema.omit({ yapilar: true });
+export type AiIdeaPlan = z.infer<typeof aiIdeaPlanSchema>;
+
 /** 6 bölgenin sabit sırası — bir katkı onaylandığında fikir bir sonraki bölgeye ilerler. */
 export const REGION_ORDER: RegionName[] = REGIONS.map((r) => r.name);
 
@@ -84,13 +96,28 @@ export function toHexColor(n: number): string {
 
 /* ---------------- Deterministik fallback ---------------- */
 
-function hashText(text: string): number {
+export function hashText(text: string): number {
   let h = 2166136261;
   for (let i = 0; i < text.length; i++) {
     h ^= text.charCodeAt(i);
     h = Math.imul(h, 16777619);
   }
   return h >>> 0;
+}
+
+/**
+ * "yapilar" listesini deterministik olarak üretir — aynı seed her zaman aynı
+ * hologram şeklini verir. Hem `fallbackPlan` hem de AI yolunda (idea-core-ai.ts)
+ * kullanılır; modelden istenmez (bkz. `aiIdeaPlanSchema` yorumu).
+ */
+export function generateStructurePoints(seed: number): IdeaStructurePoint[] {
+  const rnd = mulberry32(seed);
+  const count = 14 + Math.floor(rnd() * 13); // 14..26
+  return Array.from({ length: count }, () => ({
+    x: 8 + Math.floor(rnd() * 81),
+    y: Math.floor(rnd() * 7),
+    z: 8 + Math.floor(rnd() * 81),
+  }));
 }
 
 const REGION_KEYWORDS: Record<RegionName, string[]> = {
@@ -148,13 +175,6 @@ export function looksLikeSpam(text: string): boolean {
  */
 export function fallbackPlan(text: string): IdeaPlan {
   const region = guessRegion(text);
-  const rnd = mulberry32(hashText(text));
-  const count = 14 + Math.floor(rnd() * 13); // 14..26
-  const yapilar: IdeaStructurePoint[] = Array.from({ length: count }, () => ({
-    x: 8 + Math.floor(rnd() * 81),
-    y: Math.floor(rnd() * 7),
-    z: 8 + Math.floor(rnd() * 81),
-  }));
   const kp = Math.max(5, Math.min(100, 10 + Math.round(text.trim().length / 4)));
   return {
     bolge: region,
@@ -162,7 +182,7 @@ export function fallbackPlan(text: string): IdeaPlan {
     baslik: titleFromText(text),
     renk: toHexColor(regionColor(region)),
     onerilenKatkiPuani: kp,
-    yapilar,
+    yapilar: generateStructurePoints(hashText(text)),
     uygunMu: !looksLikeSpam(text),
   };
 }

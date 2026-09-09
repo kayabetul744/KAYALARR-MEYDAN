@@ -16,7 +16,14 @@ import { createServerFn } from "@tanstack/react-start";
 import { generateObject } from "ai";
 import { google } from "@ai-sdk/google";
 
-import { fallbackPlan, ideaPlanSchema, type IdeaAnalysis } from "@/lib/idea-core";
+import {
+  fallbackPlan,
+  aiIdeaPlanSchema,
+  generateStructurePoints,
+  hashText,
+  type IdeaAnalysis,
+  type IdeaPlan,
+} from "@/lib/idea-core";
 
 const SYSTEM_PROMPT = `Sen "Meydan" adlı sosyal inovasyon platformunun AI Fikir Çekirdeği'sin.
 
@@ -34,8 +41,6 @@ Kullanıcının fikrini analiz et ve şu altı bölgeden TAM OLARAK birine ata:
 - Başarı: tamamlanmaya yakın, ödül/lansman aşamasındaki fikirler
 
 Kurallar (bunlara kesinlikle uy, aksi hâlde çıktı reddedilir):
-- "yapilar" listesi 14 ile 26 arasında öğe içermeli.
-- Her yapı noktasının x ve z değeri 8 ile 88 arasında bir tam sayı olmalı; y değeri 0 ile 8 arasında bir tam sayı olmalı.
 - "renk" #rrggbb biçiminde olmalı (örn. #35d6ff).
 - "baslik" en fazla altı kelime olmalı, kullanıcının fikrini özetlemeli.
 - "onerilenKatkiPuani" 1 ile 100 arasında bir tam sayı olmalı; fikrin netliği ve kapsamına göre öner.
@@ -69,9 +74,12 @@ export const analyzeIdea = createServerFn({ method: "POST" })
       const modelId = process.env["MEYDAN_GEMINI_MODEL"] ?? DEFAULT_MODEL;
       const { object } = await generateObject({
         model: google(modelId),
-        schema: ideaPlanSchema,
+        schema: aiIdeaPlanSchema,
         system: SYSTEM_PROMPT,
         prompt: text,
+        // Şema artık sadece sınıflandırma istediği için gerçek üretim ~2-3sn
+        // sürüyor; 30sn'lik pay, ücretsiz katmanın kota/hız sınırına takılıp
+        // AI SDK'nin dahili backoff ile tekrar denediği (nadir) durumlar içindir.
         abortSignal: AbortSignal.timeout(30_000),
         providerOptions: {
           // Bu sınıflandırma/planlama görevi için derin "thinking" gerekmiyor;
@@ -79,7 +87,12 @@ export const analyzeIdea = createServerFn({ method: "POST" })
           google: { thinkingConfig: { thinkingLevel: "low" } },
         },
       });
-      return { plan: object, source: "ai" };
+      // 3B koordinat listesi ("yapilar") modelden istenmiyor — bu mekanik bir
+      // üretim görevi ve model bunu güvenilir üretemiyordu (bkz. idea-core.ts
+      // > aiIdeaPlanSchema yorumu). Aynı deterministik üreticiyle eklenir;
+      // modelin katkısı yalnızca sınıflandırma kısmıdır.
+      const plan: IdeaPlan = { ...object, yapilar: generateStructurePoints(hashText(text)) };
+      return { plan, source: "ai" };
     } catch (error) {
       console.error("[idea-core] AI analizi başarısız, deterministik plana geçiliyor:", error);
       return { plan: fallbackPlan(text), source: "fallback" };
