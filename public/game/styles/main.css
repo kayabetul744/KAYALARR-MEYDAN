@@ -692,4 +692,9 @@ html, body {
 }
 .idea-item .idea-author { font-size: 12px; color: #F48FB1; font-weight: bold; }
 .idea-item .idea-body { font-size: 14px; color: rgba(255,255,255,0.9); margin-top: 4px; white-space: pre-wrap; }
+.idea-item .idea-meta { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 6px; }
 .idea-empty { font-size: 13px; color: rgba(255,255,255,0.5); text-align: center; padding: 12px; }
+.idea-status { font-size: 12px; min-height: 16px; margin: -8px 0 12px; text-align: center; }
+.idea-status.pending { color: rgba(255,255,255,0.6); }
+.idea-status.success { color: #7CD992; }
+.idea-status.error { color: #F0716B; }

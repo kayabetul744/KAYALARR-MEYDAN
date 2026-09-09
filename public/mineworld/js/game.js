@@ -981,15 +981,40 @@ class Game {
         }
       });
 
+      document.addEventListener('pointerlockerror', () => {
+        // iframe içinde bazı tarayıcılarda pointer lock hiç çalışmaz (WrongDocumentError).
+        // Oyunu kilitlemek yerine WASD ile oynanabilir modda devam et.
+        console.warn('[ÜRETIM ATÖLYESİ] Pointer lock kullanılamıyor, WASD ile oynanabilir modda devam ediliyor.');
+        this.isPointerLocked = false;
+        if (this.isRunning) {
+          this.ui.pauseScreen.style.display = 'none';
+          this._showGameUI(true);
+        }
+      });
+
       const requestLock = () => {
         if (!this.isPointerLocked && this.isRunning) {
-          this.canvas.requestPointerLock();
+          try {
+            const p = this.canvas.requestPointerLock();
+            if (p && typeof p.catch === 'function') {
+              p.catch(() => {
+                this.isPointerLocked = false;
+                this.ui.pauseScreen.style.display = 'none';
+                this._showGameUI(true);
+              });
+            }
+          } catch {
+            this.isPointerLocked = false;
+            this.ui.pauseScreen.style.display = 'none';
+            this._showGameUI(true);
+          }
         }
       };
 
       this.ui.startScreen.addEventListener('click', () => {
         this.isRunning = true;
         this.ui.startScreen.style.display = 'none';
+        this._showGameUI(true);
         // 相机从 DENSITY 立墙预览切到玩家第一人称
         this.camera.position.set(this._spawnX, this._spawnY + this.player.eyeHeight, this._spawnZ);
         const lookDir = new THREE.Vector3(
@@ -1150,8 +1175,9 @@ class Game {
       this.player.keys['KeyD'] = tc.moveX > deadZone;
     }
 
-    // 桌面端指针锁定 或 移动端运行时更新游戏逻辑
-    if (this.isPointerLocked || (this.isMobile && this.isRunning)) {
+    // iframe içinde pointer lock her zaman başarılı olmayabilir (ör. WrongDocumentError);
+    // dünya/oyuncu güncellemesi buna bağlı kalmasın, aksi halde ekran mavi/boş kalır.
+    if (this.isRunning) {
       this.player.update(dt);
       this.world.update(this.player.position.x, this.player.position.z);
       this.highlight.update(this.player.targetBlock);

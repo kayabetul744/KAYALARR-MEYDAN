@@ -324,16 +324,20 @@ Bu sprintte **iki ayrı hat birleştirildi**: tasarım ekibinin güncellediği y
 - **Gerçek bir hata bulundu ve düzeltildi:** `gemini-3.6-flash` varsayılan olarak "thinking" (derin düşünme) modunda çalışıyor ve bu, isteklerin 25 saniyeyi aşarak zaman aşımına uğramasına yol açıyordu; `thinkingLevel: "low"` ayarıyla çözüldü
 - **Gerçek Gemini anahtarıyla yeniden doğrulandı:** düzeltmeden sonra birden fazla fikir gönderimi **"YAPAY ZEKÂ İLE ANALİZ EDİLDİ"** kaynağıyla, tutarlı ve anlamlı sonuçlar üretti (bkz. örnek: "Sokak Hayvanları Ortak Besleme Noktaları" → Topluluk bölgesi, 65 KP)
 - `npm run build` ile client bundle'ın `pg`/AI SDK kodu içermediği yeniden doğrulandı
+- **Atölye'nin (`/atolye`) "Fikir Panosu"su gerçek AI Fikir Çekirdeği + katkı sistemine bağlandı:** oyun vanilla JS/iframe içinde çalıştığı için sunucu fonksiyonlarını doğrudan çağıramıyor; bu yüzden bir `postMessage` köprüsü kuruldu (`public/game/js/game.js` ↔ `src/routes/atolye.tsx`). Panoda paylaşılan bir fikir artık gerçekten `analyzeIdea` (Gemini/fallback) ile analiz edilip `saveIdea` ile aynı Postgres deftere kaydediliyor — daha önce sadece `localStorage`'a yazan, tamamen ayrı bir sahte pano idi. Uçtan uca, yerel bir Postgres'e karşı gerçek bir istekle doğrulandı: Atölye'de paylaşılan fikir hem oyunun kendi panosunda hem de ana sayfadaki "Fikirler & Katkılar" panelinde aynı kayıt olarak görüldü
+- Aynı pointer-lock/mavi ekran hatası (`WrongDocumentError`, iframe içinde `requestPointerLock` başarısız oluyordu) `/atolye` ve `/insa` oyunlarının kendi kod kopyalarında da bulunup düzeltildi — dünya artık pointer lock başarısız olsa bile render ediliyor, WASD ile oynanabiliyor
 
 ### Şu An Gerçekten Çalışan Bütün
 
 **Bir kullanıcı gerçek bir fikir yazabiliyor → AI Fikir Çekirdeği (gerçek Gemini ile) onu doğru bölgeye yönlendirip bir başlık/tema/KP öneriyor → fikir kalıcı olarak kaydediliyor → başka bir kullanıcı ona katkı sunabiliyor → fikir sahibi onaylayabiliyor → onaylanan katkı gerçekten KP kazandırıp fikri bir sonraki bölgeye ilerletiyor → liderlik tablosunda görünüyor.** Bu döngü uçtan uca, gerçek bir AI anahtarı ve gerçek bir veritabanıyla test edilip doğrulanmıştır.
 
 **Henüz gerçek olmayanlar (bilerek, açıkça):**
-- Atölye'de inşa edilen bloklar bu katkı sistemine **henüz bağlı değil** — ayrı bir sandbox
-- Gerçek kimlik doğrulama yok (NSosyal SSO yerine tarayıcı takma adı)
+- Atölye'de **blok koyup kırmak** hâlâ katkı sistemine bağlı değil — sadece görsel bir inşa sandbox'ı. Bağlanan kısım, Atölye'nin "Fikir Panosu"ndaki (E tuşu) fikir paylaşımı; blok inşası ile KP kazanma arasında henüz bir ilişki yok
+- `/insa` (Üretim Atölyesi / MineWorld) tamamen ayrı bir blok sandbox'ı, fikir panosu mekaniği bile yok — hiçbir sisteme bağlı değil
+- Gerçek kimlik doğrulama yok (NSosyal SSO yerine tarayıcı takma adı) — bu, NSosyal'in kendi kimlik doğrulama altyapısına erişim gerektirdiği için ekip dışı bir bağımlılık
 - Gerçek zamanlı (websocket) senkronizasyon yok, 15 saniyelik yenileme var
-- Tam kapsamlı moderasyon yok
+- Tam kapsamlı moderasyon yok — yalnızca AI'nin kendi `uygunMu` sınıflandırması ve temel spam denetimi var, insan incelemesi/itiraz akışı yok
+- Canlı ortamda (`kayalarr-meydan.vercel.app`) `GOOGLE_GENERATIVE_AI_API_KEY` henüz tanımlı değil — yerelde uçtan uca doğrulandı ama üretimde şu an her istek fallback'e düşüyor
 
 ### Sprint 6 Ürün Görselleri
 
@@ -407,11 +411,12 @@ Bu sprintte **iki ayrı hat birleştirildi**: tasarım ekibinin güncellediği y
 
 ## Sonraki Adımlar
 
-- Gerçek kimlik doğrulama (NSosyal ile SSO) — şu an yalnızca tarayıcı başına kalıcı bir takma ad var, gerçek bir hesap sistemi değil
-- Gerçek Gemini anahtarının üretim ortamına (Vercel) eklenmesi — yerel olarak uçtan uca doğrulandı, ancak canlı dağıtımda henüz `GOOGLE_GENERATIVE_AI_API_KEY` tanımlı değil
+- **Gerçek Gemini anahtarının üretim ortamına (Vercel) eklenmesi** — yerel olarak ve `/atolye` üzerinden uçtan uca doğrulandı, ancak canlı dağıtımda (`kayalarr-meydan.vercel.app`) henüz `GOOGLE_GENERATIVE_AI_API_KEY` tanımlı değil, bu yüzden üretimde her istek şu an fallback'e düşüyor. Bu, projeyi yürüten kişinin kendi Vercel hesabında panelden ekleyebileceği tek adımlık bir ayar (bkz. [Kurulum](#kurulum))
+- Atölye'de **blok inşasının** da bir katkı biçimine dönüştürülmesi — şu an sadece Fikir Panosu (E tuşu) bağlı, bloklarla "neyi inşa ettiğinin fikre katkı sayılacağı" ayrı bir tasarım kararı gerektiriyor
+- `/insa` (MineWorld) sandbox'ının da aynı fikir panosu köprüsüne bağlanması
+- Gerçek kimlik doğrulama (NSosyal ile SSO) — NSosyal'in kendi kimlik doğrulama altyapısına erişim gerektirdiği için şu an ekip dışı bir bağımlılık; yalnızca tarayıcı başına kalıcı bir takma ad var, gerçek bir hesap sistemi değil
 - Tam kapsamlı içerik moderasyonu (şu an yalnızca temel spam denetimi ve AI'nin kendi `uygunMu` sınıflandırması var; insan incelemesi/itiraz akışı yok)
-- Gerçek zamanlı (websocket tabanlı) çoklu kullanıcı senkronizasyonu — periyodik yenilemenin yerini alacak
-- **Atölye'nin (`/atolye`, `/insa`) katkı/onay/KP sistemine bağlanması** — inşa edilen blokların bir fikre katkı olarak kaydedilmesi, henüz sadece bağımsız bir sandbox
+- Gerçek zamanlı (websocket tabanlı) çoklu kullanıcı senkronizasyonu — periyodik yenilemenin yerini alacak; Vercel'in serverless fonksiyonları kalıcı websocket bağlantısını doğrudan desteklemediği için ayrı bir servise (ör. Pusher/Ably) ihtiyaç var
 
 ## Kurulum
 

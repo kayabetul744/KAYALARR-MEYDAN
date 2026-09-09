@@ -1,5 +1,8 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { analyzeIdea } from "@/lib/idea-core-ai";
+import { saveIdea, listIdeas } from "@/lib/ideas-db";
+import { useMeydanUser } from "@/lib/use-meydan-user";
 
 export const Route = createFileRoute("/atolye")({
   head: () => ({
@@ -63,11 +66,71 @@ const CONTROLS = [
 
 function AtolyePage() {
   const [playing, setPlaying] = useState(false);
+  const { name: userName } = useMeydanUser();
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  const postToGame = useCallback((msg: unknown) => {
+    iframeRef.current?.contentWindow?.postMessage(msg, window.location.origin);
+  }, []);
+
+  // Atölye'nin (public/game) "Fikir Panosu"nu gerçek AI Fikir Çekirdeği +
+  // Postgres katkı/KP sistemine bağlayan postMessage köprüsü. Oyun vanilla
+  // JS/iframe içinde çalıştığı için sunucu fonksiyonlarını doğrudan
+  // çağıramıyor; bu yüzden istekleri buraya, gerçek server function'ların
+  // çalıştığı React tarafına iletiyor.
+  useEffect(() => {
+    if (!playing) return;
+
+    async function handleMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      const data = event.data as { type?: string; text?: string; author?: string } | null;
+      if (!data || typeof data !== "object") return;
+
+      if (data.type === "atolye:request-ideas") {
+        try {
+          const ideas = await listIdeas();
+          postToGame({ type: "atolye:ideas", ideas });
+        } catch {
+          postToGame({ type: "atolye:ideas", ideas: [] });
+        }
+        return;
+      }
+
+      if (data.type === "atolye:submit-idea") {
+        const text = (data.text ?? "").trim();
+        const author = (data.author ?? "").trim() || userName || "Anonim";
+        if (text.length < 3) {
+          postToGame({ type: "atolye:idea-error", message: "Fikrini biraz daha uzun yaz." });
+          return;
+        }
+        try {
+          const analysis = await analyzeIdea({ data: text });
+          const idea = await saveIdea({
+            data: { text, plan: analysis.plan, source: analysis.source, ownerName: author },
+          });
+          postToGame({ type: "atolye:idea-created", idea, source: analysis.source });
+          const ideas = await listIdeas();
+          postToGame({ type: "atolye:ideas", ideas });
+        } catch (err) {
+          postToGame({
+            type: "atolye:idea-error",
+            message:
+              err instanceof Error ? err.message : "Çekirdek şu anda analiz edemedi, tekrar dene.",
+          });
+        }
+      }
+    }
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [playing, userName, postToGame]);
 
   if (playing) {
     return (
       <main className="fixed inset-0 bg-background">
         <iframe
+          ref={iframeRef}
           src="/game/index.html"
           title="ATÖLYE oyunu"
           className="h-full w-full border-0"

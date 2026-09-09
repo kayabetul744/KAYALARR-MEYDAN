@@ -593,7 +593,14 @@ class Game {
       zoneBanner: document.getElementById('zoneBanner'),
       interactHint: document.getElementById('interactHint'),
       ideaBoard: document.getElementById('ideaBoard'),
+      ideaStatus: document.getElementById('ideaStatus'),
     };
+
+    // Meydan uygulamasına (iframe parent) gerçek fikir gönderimi köprüsü.
+    // Bağımsız Atölye dağıtımında (meydan-atolye) parent bu mesajları
+    // dinlemez; bu durumda liste boş kalır ve gönderim "sunucuya
+    // ulaşılamadı" hatası gösterir — açıkça, sessizce sahtelenmez.
+    this._remoteIdeas = [];
 
     // Genişletilmiş blok çubuğu: temel bloklar + tüm ek bloklar
     this.blockTypes = [
@@ -923,15 +930,40 @@ class Game {
         }
       });
 
+      document.addEventListener('pointerlockerror', () => {
+        // iframe içinde bazı tarayıcılarda pointer lock hiç çalışmaz (WrongDocumentError).
+        // Oyunu kilitlemek yerine WASD ile oynanabilir modda devam et.
+        console.warn('[ATÖLYE] Pointer lock kullanılamıyor, WASD ile oynanabilir modda devam ediliyor.');
+        this.isPointerLocked = false;
+        if (this.isRunning) {
+          this.ui.pauseScreen.style.display = 'none';
+          this._showGameUI(true);
+        }
+      });
+
       const requestLock = () => {
         if (!this.isPointerLocked && this.isRunning) {
-          this.canvas.requestPointerLock();
+          try {
+            const p = this.canvas.requestPointerLock();
+            if (p && typeof p.catch === 'function') {
+              p.catch(() => {
+                this.isPointerLocked = false;
+                this.ui.pauseScreen.style.display = 'none';
+                this._showGameUI(true);
+              });
+            }
+          } catch {
+            this.isPointerLocked = false;
+            this.ui.pauseScreen.style.display = 'none';
+            this._showGameUI(true);
+          }
         }
       };
 
       this.ui.startScreen.addEventListener('click', () => {
         this.isRunning = true;
         this.ui.startScreen.style.display = 'none';
+        this._showGameUI(true);
         this.camera.position.set(this._spawnX, this._spawnY + this.player.eyeHeight, this._spawnZ);
         const lookDir = new THREE.Vector3(
           -Math.sin(this.player.yaw) * Math.cos(this.player.pitch),
@@ -1178,25 +1210,58 @@ class Game {
       e.preventDefault();
       this.ideaOpen ? this._closeIdeaBoard() : this._openIdeaBoard();
     });
+
+    window.addEventListener('message', (e) => this._onParentMessage(e));
     this._renderIdeas();
   }
 
-  _loadIdeas() {
-    try { return JSON.parse(localStorage.getItem('atolye_ideas') || '[]'); }
-    catch { return []; }
+  _onParentMessage(e) {
+    const data = e.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type === 'atolye:ideas') {
+      this._remoteIdeas = Array.isArray(data.ideas) ? data.ideas : [];
+      this._renderIdeas();
+    } else if (data.type === 'atolye:idea-created') {
+      const idea = data.idea || {};
+      const kaynak = data.source === 'ai' ? 'AI Fikir Çekirdeği' : 'yedek sınıflandırıcı';
+      this._setIdeaStatus(
+        `Paylaşıldı → "${idea.title || idea.baslik || ''}" · ${idea.region || idea.bolge || ''} bölgesi · ${idea.suggestedKp ?? idea.onerilenKatkiPuani ?? '?'} KP (${kaynak})`,
+        'success',
+      );
+      const t = document.getElementById('ideaText');
+      if (t) t.value = '';
+    } else if (data.type === 'atolye:idea-error') {
+      this._setIdeaStatus(data.message || 'Fikir gönderilemedi.', 'error');
+    }
+  }
+
+  _setIdeaStatus(msg, kind) {
+    const el = this.ui.ideaStatus;
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = 'idea-status' + (kind ? ' ' + kind : '');
+  }
+
+  _requestIdeas() {
+    try {
+      window.parent.postMessage({ type: 'atolye:request-ideas' }, window.location.origin);
+    } catch {}
   }
 
   _renderIdeas() {
     const list = document.getElementById('ideaList');
     if (!list) return;
-    const ideas = this._loadIdeas();
+    const ideas = this._remoteIdeas;
     if (!ideas.length) {
       list.innerHTML = '<div class="idea-empty">Henüz fikir yok. İlk fikri sen paylaş!</div>';
       return;
     }
-    list.innerHTML = ideas.slice().reverse().map(i =>
-      `<div class="idea-item"><div class="idea-author">${this._esc(i.author)}</div><div class="idea-body">${this._esc(i.text)}</div></div>`
-    ).join('');
+    list.innerHTML = ideas.slice(0, 20).map(i => {
+      const author = i.ownerName || i.author || 'Anonim';
+      const region = i.region || i.bolge || '';
+      const kp = i.suggestedKp ?? i.onerilenKatkiPuani;
+      return `<div class="idea-item"><div class="idea-author">${this._esc(author)}</div><div class="idea-body">${this._esc(i.text)}</div><div class="idea-meta">${this._esc(region)}${kp != null ? ' · ' + this._esc(String(kp)) + ' KP' : ''}</div></div>`;
+    }).join('');
   }
 
   _esc(t) {
@@ -1209,11 +1274,14 @@ class Game {
     const a = document.getElementById('ideaAuthor');
     const t = document.getElementById('ideaText');
     if (!t || !t.value.trim()) return;
-    const ideas = this._loadIdeas();
-    ideas.push({ author: (a && a.value.trim()) || 'Anonim', text: t.value.trim(), at: Date.now() });
-    try { localStorage.setItem('atolye_ideas', JSON.stringify(ideas.slice(-100))); } catch {}
-    t.value = '';
-    this._renderIdeas();
+    const author = (a && a.value.trim()) || 'Anonim';
+    const text = t.value.trim();
+    this._setIdeaStatus('Gönderiliyor... (AI Fikir Çekirdeği analiz ediyor)', 'pending');
+    try {
+      window.parent.postMessage({ type: 'atolye:submit-idea', author, text }, window.location.origin);
+    } catch {
+      this._setIdeaStatus('Sunucuya ulaşılamadı.', 'error');
+    }
   }
 
   _nearIdeaSpot() {
@@ -1234,7 +1302,9 @@ class Game {
   _openIdeaBoard() {
     if (!this.ui.ideaBoard) return;
     this.ideaOpen = true;
+    this._setIdeaStatus('', null);
     this._renderIdeas();
+    this._requestIdeas();
     this.ui.ideaBoard.classList.add('open');
     if (this.ui.interactHint) this.ui.interactHint.style.display = 'none';
     if (document.pointerLockElement) document.exitPointerLock();
@@ -1271,7 +1341,9 @@ class Game {
       this.player.keys['KeyD'] = tc.moveX > deadZone;
     }
 
-    if (this.isPointerLocked || (this.isMobile && this.isRunning)) {
+    // iframe içinde pointer lock her zaman başarılı olmayabilir (ör. WrongDocumentError);
+    // dünya/oyuncu güncellemesi buna bağlı kalmasın, aksi halde ekran mavi/boş kalır.
+    if (this.isRunning) {
       this.player.update(dt);
       this.world.update(this.player.position.x, this.player.position.z);
       this.highlight.update(this.player.targetBlock);
