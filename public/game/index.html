@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="Atölye - 3D piksel blok dünyasında keşif, üretim ve fikir paylaşımı" />
+  <title>Atölye</title>
+  <link rel="stylesheet" href="./styles/main.css" />
+  <!-- Three.js ES Module importmap -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <!-- Oyun tuvali -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- Nişangâh -->
+  <div id="crosshair">+</div>
+
+  <!-- Seçili blok adı -->
+  <div id="selectedBlockName">Çimen</div>
+
+  <!-- Alt blok çubuğu -->
+  <div id="hotbar"></div>
+
+  <!-- Hedef blok göstergesi -->
+  <div id="blockHighlight"></div>
+
+  <!-- Hata ayıklama bilgisi -->
+  <div id="debugInfo"></div>
+
+  <!-- Bölge bilgisi -->
+  <div id="zoneBanner"></div>
+
+  <!-- Fikir panosu etkileşim ipucu -->
+  <div id="interactHint">Fikir panosunu açmak için <b>E</b></div>
+
+  <!-- Fikir paylaşım panosu -->
+  <div id="ideaBoard">
+    <div class="idea-card">
+      <h2>Fikir Panosu</h2>
+      <p class="idea-sub">Atölye sakinlerinin paylaştığı fikirler</p>
+      <div class="idea-form">
+        <input id="ideaAuthor" type="text" maxlength="20" placeholder="Adın" />
+        <textarea id="ideaText" maxlength="200" placeholder="Fikrini yaz..."></textarea>
+        <div class="idea-actions">
+          <button id="ideaSubmit">Paylaş</button>
+          <button id="ideaClose">Kapat (ESC)</button>
+        </div>
+      </div>
+      <div id="ideaList" class="idea-list"></div>
+    </div>
+  </div>
+
+  <!-- Kontrol paneli (masaüstü) -->
+  <div id="controlsPanel" class="desktop-only">
+    <div class="controls-trigger">?</div>
+    <div class="controls-body">
+      <div class="control-row"><span class="key">W A S D</span><span>Hareket</span></div>
+      <div class="control-row"><span class="key">Fare</span><span>Bakış</span></div>
+      <div class="control-row"><span class="key">Sol tık</span><span>Blok koy</span></div>
+      <div class="control-row"><span class="key">Sağ tık</span><span>Blok kır</span></div>
+      <div class="control-row"><span class="key">Boşluk</span><span>Zıpla</span></div>
+      <div class="control-row"><span class="key">1-9</span><span>Blok seç</span></div>
+      <div class="control-row"><span class="key">Tekerlek</span><span>Yakınlaş / uzaklaş</span></div>
+      <div class="control-row"><span class="key">E</span><span>Fikir panosu</span></div>
+      <div class="control-row"><span class="key">ESC</span><span>Duraklat</span></div>
+    </div>
+  </div>
+
+  <!-- Yükleme çubuğu -->
+  <div id="loadingBar">
+    <div class="loading-text">Dünya oluşturuluyor...</div>
+    <div class="loading-progress"><div class="loading-fill" id="loadingFill"></div></div>
+  </div>
+
+  <!-- Duraklatma ekranı -->
+  <div id="pauseScreen">
+    <div class="pause-text">Duraklatıldı</div>
+    <div class="pause-hint">Devam etmek için tıkla</div>
+  </div>
+
+  <!-- Başlangıç ekranı -->
+  <div id="startScreen">
+    <div class="start-title">ATÖLYE</div>
+    <div class="start-subtitle">ÜRET · TASARLA · PAYLAŞ</div>
+    <div class="start-zones" aria-label="Altı bölge">
+      <span>FİKİR</span><span>TASARIM</span><span>ÜRETİM</span>
+      <span>TOPLULUK</span><span>PAZAR</span><span>BAŞARI</span>
+    </div>
+    <div class="start-hint">Başlamak için tıkla</div>
+    <div class="controls-info desktop-only">
+      <h3>Kontroller</h3>
+      <div class="control-row"><span class="key">W A S D</span><span>Hareket</span></div>
+      <div class="control-row"><span class="key">Fare</span><span>Bakış</span></div>
+      <div class="control-row"><span class="key">Boşluk</span><span>Zıpla</span></div>
+      <div class="control-row"><span class="key">Sol tık</span><span>Blok koy</span></div>
+      <div class="control-row"><span class="key">Sağ tık</span><span>Blok kır</span></div>
+      <div class="control-row"><span class="key">1-9</span><span>Blok seç</span></div>
+      <div class="control-row"><span class="key">Tekerlek</span><span>Yakınlaş / uzaklaş</span></div>
+      <div class="control-row"><span class="key">E</span><span>Fikir panosu</span></div>
+      <div class="control-row"><span class="key">= / -</span><span>Yakınlaş / uzaklaş</span></div>
+      <div class="control-row"><span class="key">0</span><span>Görüşü sıfırla</span></div>
+    </div>
+  </div>
+
+  <!-- Mobil dokunmatik arayüz -->
+  <div id="mobileControls" style="display:none;">
+    <!-- Sanal joystick -->
+    <div id="joystickZone">
+      <div id="joystickThumb"></div>
+    </div>
+    <!-- Aksiyon butonları -->
+    <div id="actionButtons">
+      <button id="btnJump" class="action-btn">Zıpla</button>
+      <button id="btnBreak" class="action-btn">Kır</button>
+      <button id="btnPlace" class="action-btn">Koy</button>
+      <button id="btnIdea" class="action-btn">Fikir</button>
+    </div>
+    <!-- Mobil blok çubuğu -->
+    <div id="mobileHotbar"></div>
+  </div>
+
+  <!-- Ana oyun modülü -->
+  <script type="module" src="./js/game.js"></script>
+</body>
+</html>

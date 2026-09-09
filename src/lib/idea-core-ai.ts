@@ -72,7 +72,12 @@ export const analyzeIdea = createServerFn({ method: "POST" })
         schema: ideaPlanSchema,
         system: SYSTEM_PROMPT,
         prompt: text,
-        abortSignal: AbortSignal.timeout(12_000),
+        abortSignal: AbortSignal.timeout(30_000),
+        providerOptions: {
+          // Bu sınıflandırma/planlama görevi için derin "thinking" gerekmiyor;
+          // kapatmak gecikmeyi ciddi ölçüde azaltıyor (bkz. Sprint 6 notları).
+          google: { thinkingConfig: { thinkingBudget: 0 } },
+        },
       });
       return { plan: object, source: "ai" };
     } catch (error) {

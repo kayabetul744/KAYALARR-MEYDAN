@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -7,6 +8,7 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import {
   CHARACTER,
+  CHIMNEYS,
   DESIGN_CENTER,
   DESIGN_HALF,
   PRODUCTION_CENTER,
@@ -33,6 +35,8 @@ import {
   type WalkMap,
 } from "@/lib/voxel-world";
 
+import { ATOLYE_GATE, ATOLYE_GATE_ANGLE } from "@/lib/block-extras";
+
 import { istanbulClock, type IstanbulClock } from "@/lib/istanbul-time";
 import { createSeascape } from "@/lib/seascape";
 import { planToVoxels, type IdeaAnalysis } from "@/lib/idea-core";
@@ -49,9 +53,13 @@ import {
   Eye,
   ChevronsUp,
   Info,
+  Network,
+  Activity,
+  TrendingUp,
+  Users,
+  GitBranch,
   Sparkles,
   X,
-  Users,
 } from "lucide-react";
 
 interface Contribution {
@@ -94,6 +102,49 @@ BOX.setAttribute(
   new THREE.BufferAttribute(new Float32Array(BOX.attributes["position"]!.count * 3).fill(1), 3),
 );
 
+const voxelTextureCache = new Map<string, THREE.CanvasTexture>();
+
+/** İlk oyundaki 16px blok atlası hissini, renkleri koruyan nötr bir doku ile taşır. */
+function voxelTexture(kind: VoxelKind): THREE.CanvasTexture {
+  const cached = voxelTextureCache.get(kind);
+  if (cached) return cached;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 16;
+  canvas.height = 16;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = "rgb(226, 226, 220)";
+    ctx.fillRect(0, 0, 16, 16);
+    const seed = kind.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const noise = ((x * 17 + y * 31 + seed * 13) % 23) - 11;
+        const base = kind === "stone" ? 220 : kind === "leaf" ? 214 : 232;
+        const value = Math.max(180, Math.min(245, base + noise));
+        ctx.fillStyle = `rgb(${value}, ${value}, ${value})`;
+        ctx.fillRect(x, y, 1, 1);
+      }
+    }
+    if (kind === "stone" || kind === "glass") {
+      ctx.fillStyle = "rgba(100, 100, 100, 0.28)";
+      ctx.fillRect(0, 7, 16, 1);
+      ctx.fillRect(7, 0, 1, 16);
+    }
+    if (kind === "leaf") {
+      ctx.fillStyle = "rgba(60, 60, 60, 0.22)";
+      for (let i = 0; i < 18; i++) ctx.fillRect((i * 7 + seed) % 16, (i * 11 + seed) % 16, 1, 1);
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.generateMipmaps = false;
+  voxelTextureCache.set(kind, texture);
+  return texture;
+}
+
 /** Çekirdeğin "fikir analizi" durumları */
 const CORE_STATES = [
   { name: "Dinliyor", color: 0x35d6ff },
@@ -104,6 +155,7 @@ const CORE_STATES = [
 
 function makeMaterial(kind: VoxelKind, theme: Theme): THREE.Material {
   const day = theme === "day";
+  const map = voxelTexture(kind);
   switch (kind) {
     case "glow":
       return new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false });
@@ -121,6 +173,7 @@ function makeMaterial(kind: VoxelKind, theme: Theme): THREE.Material {
       });
     case "glass":
       return new THREE.MeshStandardMaterial({
+        map,
         vertexColors: true,
         roughness: 0.15,
         metalness: 0.2,
@@ -132,12 +185,14 @@ function makeMaterial(kind: VoxelKind, theme: Theme): THREE.Material {
       });
     case "leaf":
       return new THREE.MeshStandardMaterial({
+        map,
         vertexColors: true,
         roughness: 0.95,
         flatShading: true,
       });
     default:
       return new THREE.MeshStandardMaterial({
+        map,
         vertexColors: true,
         roughness: 0.92,
         metalness: 0.04,
@@ -284,6 +339,36 @@ function makeBubble(text: string) {
   return sprite;
 }
 
+/** Uzakta da okunabilen, yüksek kontrastlı bölge tabelası. */
+function makeRegionSign(text: string, accent: number) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1024;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.fillStyle = "rgba(255,255,255,0.98)";
+    ctx.beginPath();
+    ctx.roundRect(12, 12, 1000, 232, 34);
+    ctx.fill();
+    ctx.strokeStyle = `#${accent.toString(16).padStart(6, "0")}`;
+    ctx.lineWidth = 14;
+    ctx.stroke();
+    ctx.fillStyle = "#111827";
+    ctx.font = "800 108px Arial, Helvetica, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, 512, 132, 900);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: texture, transparent: true, depthWrite: false }),
+  );
+  sprite.renderOrder = 20;
+  return sprite;
+}
+
 const THEMES = {
   night: {
     bg: 0x0c1836,
@@ -329,6 +414,10 @@ interface SceneProps {
   onCoreState: (name: string) => void;
   onCamDist: (d: number) => void;
   onZone: (name: string | null) => void;
+  /** İnşa Kapısı etkileşim mesafesinde miyiz? */
+  onGateNear: (near: boolean) => void;
+  /** Kapıdan geçiş (E / tıklama) */
+  onEnterGate: () => void;
   contributions: Contribution[];
 }
 
@@ -340,6 +429,8 @@ function Scene({
   onCoreState,
   onCamDist,
   onZone,
+  onGateNear,
+  onEnterGate,
   contributions,
 }: SceneProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -351,6 +442,10 @@ function Scene({
   distCb.current = onCamDist;
   const zoneCb = useRef(onZone);
   zoneCb.current = onZone;
+  const gateNearCb = useRef(onGateNear);
+  gateNearCb.current = onGateNear;
+  const enterGateCb = useRef(onEnterGate);
+  enterGateCb.current = onEnterGate;
   const sceneRef = useRef<THREE.Scene | null>(null);
   const addedContributionsRef = useRef<Set<string>>(new Set());
 
@@ -409,8 +504,8 @@ function Scene({
     scene.add(sun);
     scene.add(new THREE.AmbientLight(T.ambient, T.ambientIntensity));
 
-    const coreLight = new THREE.PointLight(0x5cc8ff, isDay ? 280 : 1000, 170, 2);
-    coreLight.position.set(0, 26, 0);
+    const coreLight = new THREE.PointLight(0x5cc8ff, isDay ? 280 : 1000, 220, 2);
+    coreLight.position.set(0, 38, 0);
     scene.add(coreLight);
 
     /* Dünya */
@@ -420,6 +515,55 @@ function Scene({
     /* Ada çevresindeki deniz: okyanus, gemiler, balıklar, ahtapotlar, bulutlar */
     const seascape = createSeascape(theme);
     scene.add(seascape.group);
+
+    /* ---------- Gerçek duman (fabrika bacaları) + şelale serpintisi ---------- */
+    interface Puff {
+      x: number;
+      z: number;
+      y0: number;
+      life: number;
+      ttl: number;
+      dx: number;
+      dz: number;
+      s0: number;
+      s1: number;
+      rise: number;
+    }
+    const smokeGeo = new THREE.BoxGeometry(1, 1, 1);
+    const smokeMat = new THREE.MeshStandardMaterial({
+      color: isDay ? 0xe9edf2 : 0x9fb0c4,
+      transparent: true,
+      opacity: 0.65,
+      roughness: 1,
+      metalness: 0,
+      flatShading: true,
+      depthWrite: false,
+    });
+    const SMOKE_PER_CHIMNEY = 26;
+    const smokeCount = Math.max(1, CHIMNEYS.length * SMOKE_PER_CHIMNEY);
+    const smokeMesh = new THREE.InstancedMesh(smokeGeo, smokeMat, smokeCount);
+    smokeMesh.frustumCulled = false;
+    smokeMesh.castShadow = false;
+    scene.add(smokeMesh);
+    const puffs: Puff[] = [];
+    for (let i = 0; i < smokeCount; i++) {
+      const c = CHIMNEYS[i % Math.max(1, CHIMNEYS.length)];
+      const ttl = 5 + Math.random() * 3;
+      puffs.push({
+        x: c ? c.x : 0,
+        z: c ? c.z : 0,
+        y0: c ? c.top : 0,
+        life: Math.random() * ttl,
+        ttl,
+        dx: (Math.random() - 0.5) * 1.6 + 0.9,
+        dz: (Math.random() - 0.5) * 1.6 + 0.5,
+        s0: 1.6 + Math.random(),
+        s1: 9 + Math.random() * 7,
+        rise: 4.2 + Math.random() * 2.4,
+      });
+    }
+
+    const dummySm = new THREE.Object3D();
 
     /* ---------- Meydandaki voxel insanlar: yüz detaylı, dolaşan, sohbet eden ---------- */
     const groundAtMap = (x: number, z: number) => walk.get(`${Math.round(x)},${Math.round(z)}`);
@@ -511,8 +655,8 @@ function Scene({
 
     /* ---------- Merkez hologram küp + 6 yöne enerji ışını ---------- */
     const coreGroup = new THREE.Group();
-    coreGroup.position.set(0, 26, 0);
-    const coreVox = instanceGroup(buildCore(12), false, theme);
+    coreGroup.position.set(0, 38, 0);
+    const coreVox = instanceGroup(buildCore(26), false, theme);
     /* Kristal kabuk yarı saydam olsun ki içindeki logo net görünsün */
     coreVox.traverse((o) => {
       const m = o as THREE.Mesh;
@@ -528,7 +672,7 @@ function Scene({
     /* ---------- Çekirdeğin içinde N logosu: görsel voxele çevrilmeden, düz haliyle küp yüzeylerinde ---------- */
     const logoTex = makeLogoTexture();
     const logoMat = new THREE.MeshBasicMaterial({ map: logoTex, toneMapped: false });
-    const logoCube = new THREE.Mesh(new THREE.BoxGeometry(8.4, 8.4, 8.4), logoMat);
+    const logoCube = new THREE.Mesh(new THREE.BoxGeometry(18, 18, 18), logoMat);
     coreGroup.add(logoCube);
 
     const beamMat = new THREE.MeshBasicMaterial({
@@ -555,15 +699,15 @@ function Scene({
       [0, 0, 1],
       [0, 0, -1],
     ];
-    const beamLen = 16;
+    const beamLen = 30;
     const arms: THREE.Group[] = [];
     for (const [ax, ay, az] of AXES) {
       const arm = new THREE.Group();
-      const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.9, beamLen, 0.9), beamMat);
-      shaft.position.y = beamLen / 2 + 4.5;
+      const shaft = new THREE.Mesh(new THREE.BoxGeometry(1.1, beamLen, 1.1), beamMat);
+      shaft.position.y = beamLen / 2 + 9;
       arm.add(shaft);
-      const tip = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.6, 2.6), tipMat);
-      tip.position.y = beamLen + 5.1;
+      const tip = new THREE.Mesh(new THREE.BoxGeometry(5, 5, 5), tipMat);
+      tip.position.y = beamLen + 9.6;
       arm.add(tip);
       arm.quaternion.setFromUnitVectors(
         new THREE.Vector3(0, 1, 0),
@@ -580,9 +724,9 @@ function Scene({
     const pSeed: { r: number; a: number; y: number; s: number }[] = [];
     for (let i = 0; i < PCOUNT; i++) {
       pSeed.push({
-        r: 4 + Math.random() * 12,
+        r: 6 + Math.random() * 16,
         a: Math.random() * Math.PI * 2,
-        y: 6 + Math.random() * 26,
+        y: 18 + Math.random() * 26,
         s: 0.2 + Math.random() * 0.7,
       });
     }
@@ -602,7 +746,7 @@ function Scene({
     scene.add(particles);
 
     const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.6, 4.2, 22, 6, 1, true),
+      new THREE.CylinderGeometry(2.2, 5.8, 36, 6, 1, true),
       new THREE.MeshBasicMaterial({
         color: 0x35d6ff,
         transparent: true,
@@ -613,7 +757,7 @@ function Scene({
         toneMapped: false,
       }),
     );
-    beam.position.set(0, 13, 0);
+    beam.position.set(0, 18, 0);
     scene.add(beam);
 
     const rings: THREE.Mesh[] = [];
@@ -646,15 +790,83 @@ function Scene({
     /* ---------- Bölge tabelaları (kapıların üstünde) ---------- */
     REGIONS.forEach((reg, idx) => {
       const a = (idx / 6) * Math.PI * 2;
-      const r = 22;
-      const label = makeBubble(reg.name);
-      const mat = label.material as THREE.SpriteMaterial;
-      mat.opacity = 0.9;
-      label.scale.set(6.2, 1.55, 1);
-      label.position.set(Math.cos(a) * r, 12.5, Math.sin(a) * r);
-      label.material.color.setHex(reg.color).convertSRGBToLinear();
+      const r = 34;
+      const label = makeRegionSign(reg.name.toLocaleUpperCase("tr-TR"), reg.color);
+      label.scale.set(20, 5, 1);
+      label.position.set(Math.cos(a) * r, 17.5, Math.sin(a) * r);
       scene.add(label);
     });
+
+    /* ---------- Bölge merkezlerinin üstünde havada duran isim tabelaları ---------- */
+    const REGION_SIGNS: Array<{ name: string; color: number; c: { x: number; z: number } }> = [
+      { name: "FİKİR", color: 0x35d6ff, c: IDEA_CENTER },
+      { name: "TASARIM", color: 0xa855f7, c: DESIGN_CENTER },
+      { name: "ÜRETİM", color: 0xffa53a, c: PRODUCTION_CENTER },
+      { name: "TOPLULUK", color: 0x36f2b0, c: COMMUNITY_CENTER },
+      { name: "PAZAR", color: 0x25d79f, c: MARKET_CENTER },
+      { name: "BAŞARI", color: 0xffc928, c: ACHIEVEMENT_CENTER },
+    ];
+    const regionSigns: THREE.Sprite[] = [];
+    for (const sign of REGION_SIGNS) {
+      const s = makeRegionSign(sign.name, sign.color);
+      s.scale.set(32, 8, 1);
+      s.position.set(sign.c.x, 46, sign.c.z);
+      scene.add(s);
+      regionSigns.push(s);
+    }
+
+    /* ---------- Üretim Atölyesi Kapısı: portal yüzeyi, halkalar, tabela ---------- */
+    const gateGroup = new THREE.Group();
+    const gateAngle = ATOLYE_GATE_ANGLE;
+    const portalGeo = new THREE.PlaneGeometry(
+      ATOLYE_GATE.innerHalf * 2 + 1,
+      ATOLYE_GATE.innerTop - 1,
+    );
+    const portalMat = new THREE.MeshBasicMaterial({
+      color: 0xffc06a,
+      transparent: true,
+      opacity: 0.42,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    const portal = new THREE.Mesh(portalGeo, portalMat);
+    portal.position.set(ATOLYE_GATE.x, 2 + (ATOLYE_GATE.innerTop - 1) / 2, ATOLYE_GATE.z);
+    portal.rotation.y = -gateAngle;
+    gateGroup.add(portal);
+
+    const gateHalos: THREE.Mesh[] = [];
+    for (let i = 0; i < 3; i++) {
+      const halo = new THREE.Mesh(
+        new THREE.RingGeometry(2.2, 2.8, 48),
+        new THREE.MeshBasicMaterial({
+          color: 0xffd79a,
+          transparent: true,
+          opacity: 0.55,
+          side: THREE.DoubleSide,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          toneMapped: false,
+        }),
+      );
+      halo.position.copy(portal.position);
+      halo.rotation.y = -gateAngle;
+      gateHalos.push(halo);
+      gateGroup.add(halo);
+    }
+
+    const gateLight = new THREE.PointLight(0xffa53a, isDay ? 120 : 480, 70, 2);
+    gateLight.position.set(ATOLYE_GATE.x, 10, ATOLYE_GATE.z);
+    gateGroup.add(gateLight);
+
+    const gateLabel = makeBubble("ÜRETİM ATÖLYESİ");
+    (gateLabel.material as THREE.SpriteMaterial).opacity = 0.95;
+    gateLabel.scale.set(9, 2.25, 1);
+    gateLabel.position.set(ATOLYE_GATE.x, ATOLYE_GATE.innerTop + 9, ATOLYE_GATE.z);
+    gateLabel.material.color.setHex(0xffc06a).convertSRGBToLinear();
+    gateGroup.add(gateLabel);
+    scene.add(gateGroup);
 
     /* ---------- Oyuncu ---------- */
     const { root: avatar, parts } = buildCharacter({ hairStyle: "short", hair: 0x2a1e18 });
@@ -694,19 +906,23 @@ function Scene({
     let yaw = 0;
     let camYaw = 0;
 
-    let camPitch = -0.06;
+    let camPitch = -0.72;
     let walkPhase = 0;
     /* Zıplama durumu */
     let velY = 0;
     let onGround = true;
     const GRAVITY = 26;
     const JUMP_V = 9.2;
-    /** Yürüyüş modunda omuz üstü (0) ↔ kuş bakışı (60) arası kademesiz mesafe */
-    let camDist = 0;
-    let camDistTarget = 0;
-    /** Tasarım Bölgesi'nde otomatik kuş bakışı mesafesi */
-    const BIRD_CAM = 58;
+    /** Yürüyüş modunda omuz üstü (0) ↔ kuş bakışı (78) arası kademesiz mesafe */
+    let camDist = 34;
+    let camDistTarget = 34;
     let inDesign: string | null = null;
+    /* İnşa Kapısı etkileşim durumu */
+    let gateWasNear = false;
+    const gateClickRef = { value: false };
+    const onGateClick = () => {
+      if (modeRef.current === "walk") gateClickRef.value = true;
+    };
 
     const keys = new Set<string>();
     const onKeyDown = (e: KeyboardEvent) => {
@@ -741,6 +957,7 @@ function Scene({
       dragging = false;
     };
     renderer.domElement.addEventListener("pointerdown", onDown);
+    renderer.domElement.addEventListener("click", onGateClick);
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
 
@@ -834,6 +1051,26 @@ function Scene({
       /* --- Deniz, gemiler, balıklar, ahtapotlar, bulutlar --- */
       seascape.update(t, dt);
 
+      /* Baca dumanı */
+      for (let i = 0; i < puffs.length; i++) {
+        const p = puffs[i]!;
+        p.life += dt;
+        if (p.life > p.ttl) p.life -= p.ttl;
+        const k = p.life / p.ttl;
+        const s = p.s0 + (p.s1 - p.s0) * k;
+        dummySm.position.set(
+          p.x + p.dx * k * 16 + Math.sin(t * 0.7 + i) * 1.2,
+          p.y0 + k * p.rise * 11,
+          p.z + p.dz * k * 16 + Math.cos(t * 0.6 + i) * 1.2,
+        );
+        dummySm.rotation.set(k * 1.2, k * 2.0 + i, 0);
+        dummySm.scale.setScalar(s);
+        dummySm.updateMatrix();
+        smokeMesh.setMatrixAt(i, dummySm.matrix);
+      }
+      smokeMesh.instanceMatrix.needsUpdate = true;
+      smokeMat.opacity = isDay ? 0.5 : 0.4;
+
       /* --- Çekirdek durum animasyonu --- */
       const stateIdx = Math.floor(t / 5) % CORE_STATES.length;
       if (stateIdx !== lastState) {
@@ -860,7 +1097,7 @@ function Scene({
 
       coreGroup.rotation.y = t * 0.32;
       coreGroup.rotation.x = Math.sin(t * 0.4) * 0.12;
-      coreGroup.position.y = 26 + Math.sin(t * 0.8) * 0.7;
+      coreGroup.position.y = 38 + Math.sin(t * 0.8) * 0.7;
       arms.forEach((arm, i) => {
         arm.scale.setScalar(0.9 + Math.sin(t * 2.4 + i) * 0.12);
       });
@@ -900,7 +1137,7 @@ function Scene({
         for (let i = 0; i < PCOUNT; i++) {
           const s = pSeed[i]!;
           const a = s.a + t * s.s * 0.5;
-          const y = 6 + ((s.y - 6 + t * s.s * 2.4) % 26);
+          const y = 18 + ((s.y - 18 + t * s.s * 2.4) % 26);
           pPos[i * 3] = Math.cos(a) * s.r;
           pPos[i * 3 + 1] = y;
           pPos[i * 3 + 2] = Math.sin(a) * s.r;
@@ -969,6 +1206,15 @@ function Scene({
         bubble.visible = bm.opacity > 0.02;
       }
 
+      /* --- Atölye kapısı portalı: nefes alan yüzey + yükselen halkalar --- */
+      portalMat.opacity = 0.32 + Math.sin(t * 2.1) * 0.1;
+      gateHalos.forEach((halo, i) => {
+        const k = (t * 0.28 + i / gateHalos.length) % 1;
+        halo.scale.setScalar(0.4 + k * 2.1);
+        (halo.material as THREE.MeshBasicMaterial).opacity = 0.6 * (1 - k);
+      });
+      gateLabel.position.y = ATOLYE_GATE.innerTop + 9 + Math.sin(t * 1.4) * 0.5;
+
       const walking = modeRef.current === "walk";
 
       if (walking) {
@@ -1029,7 +1275,7 @@ function Scene({
           if (yx !== null) pos.x = nx;
           const yz = canStand(pos.x, nz, tol);
           if (yz !== null) pos.z = nz;
-          yaw = Math.atan2(dx, dz);
+          yaw = camYaw + Math.PI;
           walkPhase += dt * 11;
         } else {
           walkPhase += dt * 2;
@@ -1042,7 +1288,24 @@ function Scene({
         parts["armL"]!.rotation.x = onGround ? -swingW * 0.7 : -1.5;
         parts["armR"]!.rotation.x = onGround ? swingW * 0.7 : -1.5;
         avatar.position.set(pos.x, pos.y, pos.z);
-        avatar.rotation.y = THREE.MathUtils.lerp(avatar.rotation.y, yaw, 0.2);
+        // Minecraft gibi: gövde her zaman kameranın baktığı yöne döner,
+        // böylece yürürken karakterin yüzü kameraya dönmez (sırtı görünür).
+        avatar.rotation.y = camYaw + Math.PI;
+
+        /* --- Atölye kapısı: yaklaşınca ipucu, E ile açık fikirler paneli --- */
+        const gateDist = Math.hypot(pos.x - ATOLYE_GATE.x, pos.z - ATOLYE_GATE.z);
+        const nearGate = gateDist < ATOLYE_GATE.reach;
+        if (nearGate !== gateWasNear) {
+          gateWasNear = nearGate;
+          gateNearCb.current(nearGate);
+        }
+        if (nearGate && (keys.has("e") || gateClickRef.value)) {
+          keys.delete("e");
+          gateClickRef.value = false;
+          enterGateCb.current();
+        } else if (gateClickRef.value) {
+          gateClickRef.value = false;
+        }
 
         /* --- Bölgeler: yaklaşınca kamera kendiliğinden kuş bakışına çıkar --- */
         const inDesignNow =
@@ -1081,10 +1344,10 @@ function Scene({
           zoneCb.current(zoneName);
         }
         const inZone = zoneName !== null;
-        const effTarget = inZone ? Math.max(camDistTarget, BIRD_CAM) : camDistTarget;
+        const effTarget = camDistTarget;
 
         /* --- Kademesiz kamera: omuz üstü ↔ kuş bakışı --- */
-        camDist += (effTarget - camDist) * Math.min(1, dt * (inZone ? 2.2 : 8));
+        camDist += (effTarget - camDist) * Math.min(1, dt * 8);
         distCb.current(camDist);
         // yakınlaştıkça birinci şahıs, uzaklaşınca karakter görünür
         avatar.visible = camDist > 0.75;
@@ -1127,11 +1390,16 @@ function Scene({
     return () => {
       cancelAnimationFrame(raf);
       seascape.dispose();
+      smokeGeo.dispose();
+      smokeMat.dispose();
+
       ro.disconnect();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
       renderer.domElement.removeEventListener("pointerdown", onDown);
+      renderer.domElement.removeEventListener("click", onGateClick);
+      portalGeo.dispose();
       renderer.domElement.removeEventListener("wheel", onWheel);
       renderer.domElement.removeEventListener("touchstart", onTouchStart);
       renderer.domElement.removeEventListener("touchmove", onTouchMove);
@@ -1204,7 +1472,11 @@ export function IdeaSquare() {
   const [nameDraft, setNameDraft] = useState("");
   const [browserOpen, setBrowserOpen] = useState(false);
 
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
+    setClock(istanbulClock());
     const id = window.setInterval(() => setClock(istanbulClock()), 30_000);
     return () => window.clearInterval(id);
   }, []);
@@ -1221,6 +1493,14 @@ export function IdeaSquare() {
       return next === prev ? prev : next;
     });
   }, []);
+
+  /* Üretim Atölyesi kapısı: yaklaşınca ipucu, E / tıklama ile MineWorld'e geçiş */
+  const navigate = useNavigate();
+  const [gateNear, setGateNear] = useState(false);
+  const onGateNear = useCallback((near: boolean) => setGateNear(near), []);
+  const onEnterGate = useCallback(() => {
+    void navigate({ to: "/atolye" });
+  }, [navigate]);
 
   const submitIdea = useCallback(async () => {
     const text = ideaText.trim();
@@ -1297,8 +1577,25 @@ export function IdeaSquare() {
         onCoreState={onCoreState}
         onZone={onZone}
         onCamDist={onCamDist}
+        onGateNear={onGateNear}
+        onEnterGate={onEnterGate}
         contributions={contributions}
       />
+
+      {/* Atölye kapısı ipucu */}
+      {mode === "walk" && gateNear && (
+        <div className="pointer-events-none absolute bottom-40 left-1/2 -translate-x-1/2 animate-fade-in rounded-2xl border border-primary/50 bg-card/85 px-5 py-3 text-center shadow-xl backdrop-blur-md">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+            Üretim Atölyesi
+          </p>
+          <p className="mt-1 text-sm text-card-foreground">
+            <span className="rounded-md border border-border/60 bg-background/70 px-1.5 py-0.5 font-mono">
+              E
+            </span>{" "}
+            tuşuna bas ya da tıkla — Atölyeye gir
+          </p>
+        </div>
+      )}
 
       {/* Üst bilgi paneli */}
       <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-wrap items-start justify-between gap-3 p-4">
@@ -1310,7 +1607,9 @@ export function IdeaSquare() {
               </p>
               <p className="text-sm font-semibold leading-tight">Fikir Meydanı</p>
               <div className="mt-2 flex items-baseline gap-1.5">
-                <span className="text-lg font-semibold tabular-nums">{clock.time}</span>
+                <span className="text-lg font-semibold tabular-nums">
+                  {mounted ? clock.time : "--:--"}
+                </span>
                 <span className="text-[11px] font-normal text-muted-foreground">TSİ</span>
               </div>
               <p className="mt-1.5 text-xs font-medium text-primary">Çekirdek: {coreState}</p>
@@ -1377,8 +1676,84 @@ export function IdeaSquare() {
       {mode === "walk" && zone && (
         <div className="pointer-events-none absolute left-1/2 top-36 -translate-x-1/2 animate-fade-in rounded-2xl border border-border/40 bg-card/75 px-5 py-2 text-center shadow-lg backdrop-blur-md">
           <p className="text-sm font-semibold text-card-foreground">{zone}</p>
-          <p className="text-[11px] text-muted-foreground">Kuş bakışı görünüme geçildi</p>
+          <p className="text-[11px] text-muted-foreground">Sokak görünümünde keşfet</p>
         </div>
+      )}
+
+      {/* Akıllı Pazar bölgesi için yarışma sunum paneli */}
+      {mode === "walk" && zone === "Pazar Bölgesi" && (
+        <aside className="pointer-events-none absolute right-4 top-24 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-market/35 bg-market-panel/90 text-market-foreground shadow-xl backdrop-blur-xl">
+          <div className="flex items-center gap-3 border-b border-market/20 px-4 py-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-md bg-market text-market-contrast">
+              <Network className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-market">
+                NSOSYAL · PAZAR AĞI
+              </p>
+              <p className="text-sm font-semibold">İnovasyon Borsası</p>
+            </div>
+            <span className="ml-auto h-2 w-2 animate-pulse rounded-full bg-market-signal" />
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-market/15">
+            <div className="px-3 py-3">
+              <Activity className="mb-1 h-3.5 w-3.5 text-market" />
+              <p className="text-[10px] text-market-muted">Aktif ürün</p>
+              <p className="text-sm font-semibold tabular-nums">128</p>
+            </div>
+            <div className="px-3 py-3">
+              <TrendingUp className="mb-1 h-3.5 w-3.5 text-market" />
+              <p className="text-[10px] text-market-muted">Eşleşme</p>
+              <p className="text-sm font-semibold tabular-nums">24</p>
+            </div>
+            <div className="px-3 py-3">
+              <Network className="mb-1 h-3.5 w-3.5 text-market" />
+              <p className="text-[10px] text-market-muted">Hacim</p>
+              <p className="text-sm font-semibold tabular-nums">₺8,4M</p>
+            </div>
+          </div>
+          <div className="border-t border-market/20 px-4 py-2.5 text-[10px] leading-relaxed text-market-muted">
+            AI çekirdeği 18 ürünü doğru alıcılarla eşleştiriyor
+          </div>
+        </aside>
+      )}
+
+      {/* Topluluk bölgesi: fikir çekirdeğinden gelen canlı yönlendirme özeti */}
+      {mode === "walk" && zone === "Topluluk Bölgesi" && (
+        <aside className="pointer-events-none absolute right-4 top-24 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-community/35 bg-community-panel/90 text-community-foreground shadow-xl backdrop-blur-xl">
+          <div className="flex items-center gap-3 border-b border-community/20 px-4 py-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-md bg-community text-community-contrast">
+              <Users className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-community">
+                NSOSYAL · TOPLULUK AĞI
+              </p>
+              <p className="text-sm font-semibold">Kolektif Fikir Forumu</p>
+            </div>
+            <span className="ml-auto h-2 w-2 animate-pulse rounded-full bg-community-signal" />
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-community/15">
+            <div className="px-3 py-3">
+              <Sparkles className="mb-1 h-3.5 w-3.5 text-community" />
+              <p className="text-[10px] text-community-muted">Yeni fikir</p>
+              <p className="text-sm font-semibold tabular-nums">42</p>
+            </div>
+            <div className="px-3 py-3">
+              <Users className="mb-1 h-3.5 w-3.5 text-community" />
+              <p className="text-[10px] text-community-muted">Katılımcı</p>
+              <p className="text-sm font-semibold tabular-nums">186</p>
+            </div>
+            <div className="px-3 py-3">
+              <GitBranch className="mb-1 h-3.5 w-3.5 text-community" />
+              <p className="text-[10px] text-community-muted">Eşleşme</p>
+              <p className="text-sm font-semibold tabular-nums">31</p>
+            </div>
+          </div>
+          <div className="border-t border-community/20 px-4 py-2.5 text-[10px] leading-relaxed text-community-muted">
+            AI çekirdeği 6 fikri ortak üretim masalarına yönlendiriyor
+          </div>
+        </aside>
       )}
 
       {/* Nişangâh (birinci şahıs) */}

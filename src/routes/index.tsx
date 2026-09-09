@@ -4,16 +4,16 @@ import { IdeaSquare } from "@/components/IdeaSquare";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Fikir Meydanı — Voxel Şehir" },
+      { title: "Fikir Meydanı | TEKNOFEST Akıllı Şehir" },
       {
         name: "description",
         content:
-          "Türkiye saatine göre gündüz-gece değişen voxel Fikir Meydanı: yollar, ağaçlar, köprüler ve şehirde gezdirebileceğin bir karakter.",
+          "TEKNOFEST için tasarlanan etkileşimli voxel şehir; akıllı tarım, sürdürülebilir pazar ve üretim bölgelerini keşfedin.",
       },
-      { property: "og:title", content: "Fikir Meydanı — Voxel Şehir" },
+      { property: "og:title", content: "Fikir Meydanı | TEKNOFEST Akıllı Şehir" },
       {
         property: "og:description",
-        content: "Gündüz ve gece modlu voxel şehir, yürünebilir yollar ve hologram fikir çekirdeği.",
+        content: "Akıllı tarım ve sürdürülebilir üretimi deneyimleten etkileşimli voxel şehir.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

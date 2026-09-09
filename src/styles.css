@@ -19,6 +19,8 @@
  */
 
 @theme inline {
+  --font-sans: "DM Sans", sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -59,6 +61,18 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-market: var(--market);
+  --color-market-contrast: var(--market-contrast);
+  --color-market-panel: var(--market-panel);
+  --color-market-foreground: var(--market-foreground);
+  --color-market-muted: var(--market-muted);
+  --color-market-signal: var(--market-signal);
+  --color-community: var(--community);
+  --color-community-contrast: var(--community-contrast);
+  --color-community-panel: var(--community-panel);
+  --color-community-foreground: var(--community-foreground);
+  --color-community-muted: var(--community-muted);
+  --color-community-signal: var(--community-signal);
 }
 
 :root {
@@ -95,6 +109,18 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+  --market: oklch(0.72 0.16 162);
+  --market-contrast: oklch(0.98 0.01 160);
+  --market-panel: oklch(0.16 0.035 177);
+  --market-foreground: oklch(0.97 0.012 165);
+  --market-muted: oklch(0.79 0.035 170);
+  --market-signal: oklch(0.82 0.18 145);
+  --community: oklch(0.79 0.14 190);
+  --community-contrast: oklch(0.16 0.04 205);
+  --community-panel: oklch(0.15 0.04 207);
+  --community-foreground: oklch(0.98 0.01 190);
+  --community-muted: oklch(0.8 0.04 194);
+  --community-signal: oklch(0.87 0.16 175);
 }
 
 .dark {
@@ -130,6 +156,18 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+  --market: oklch(0.72 0.16 160);
+  --market-contrast: oklch(0.15 0.03 174);
+  --market-panel: oklch(0.15 0.03 174);
+  --market-foreground: oklch(0.97 0.012 165);
+  --market-muted: oklch(0.76 0.035 170);
+  --market-signal: oklch(0.84 0.19 143);
+  --community: oklch(0.8 0.14 190);
+  --community-contrast: oklch(0.14 0.035 207);
+  --community-panel: oklch(0.14 0.035 207);
+  --community-foreground: oklch(0.98 0.01 190);
+  --community-muted: oklch(0.78 0.04 194);
+  --community-signal: oklch(0.87 0.16 175);
 }
 
 @layer base {
@@ -140,5 +178,10 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
   }
 }

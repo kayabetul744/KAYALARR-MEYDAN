@@ -332,64 +332,37 @@ Alınan kararlar:
 
 ### Sprint 6 Notları
 
-Sprint 6 kapsamında dünyanın görsel tasarımı (UI/UX) güncellendi: adanın merkezine büyük, okunaklı bir "MEYDAN" tabelası eklendi; Başarı ve Pazar bölgelerinin görsel temaları yeniden tasarlandı; gece modundaki ışıklandırma/parıltı efektleri belirginleştirildi.
-
-### Sprint 6 Goal
-
-Sprint 6'nın hedefi; dünyanın ilk bakışta ne olduğunu (adı, kimliği) daha net anlatan bir merkez tabelası eklemek ve Başarı/Pazar bölgelerinin görsel dilini, bölgenin işlevini daha iyi yansıtacak şekilde güçlendirmektir.
+Dünyanın görsel tasarımı güncellendi (merkeze **"MEYDAN"** tabelası, yeniden tasarlanan **Başarı** ve **Pazar** bölgeleri) ve yeni bir **Atölye** alanı eklendi — Minecraft tarzı, serbestçe blok koyup kırabildiğin bağımsız bir inşa modu (`/atolye`, `/insa`).
 
 ### Sprint 6'da Tamamlanan İşler
 
-**Done**
-- Ada merkezine, gökten bakıldığında okunan büyük bir **"MEYDAN"** 3B tabela/logo eklendi
-- **Başarı** bölgesi, pergolalı ve çok kürsülü bir ödül/tapınak yapısı olarak yeniden tasarlandı
-- **Pazar** bölgesi, koyu tonlu modüler pazar tezgahı/bahçe düzenine dönüştürüldü
-- Gece modu genelinde bölge ışıklandırması ve parıltı efektleri belirginleştirildi
+**Done — koda aktarıldı, build ve tarayıcıda doğrulandı**
+- Ada merkezine büyük **"MEYDAN"** 3B tabela eklendi
+- **Başarı** bölgesi pergolalı bir ödül/tapınak yapısına, **Pazar** bölgesi koyu tonlu tezgah düzenine dönüştürüldü
+- **Yeni: Atölye** — `/atolye` sayfasından 6 bölgeye (Fikir/Tasarım/Üretim/Topluluk/Pazar/Başarı) tematik giriş kartlarıyla ulaşılan, `/insa` sayfasında WASD ile gezilen, sol/sağ tık ile blok koyup kırabildiğin bağımsız bir 3B inşa modu
 
-### Sprint 6 Ürün Durumu
+**Devam Eden — henüz yapılmadı**
+- Atölye'de inşa edilen bloklar hiçbir yere kaydedilmiyor ve mevcut katkı/onay/KP sistemine **bağlı değil** (bkz. [Sonraki Adımlar](#sonraki-adımlar))
 
-Bu güncelleme şu an **Lovable tasarım editöründe** yapılmış durumda ve aşağıdaki ekran görüntüleriyle belgelenmiştir. Bu depodaki (`src/lib/voxel-world.ts`) kaynak kod henüz bu yeni tasarımı içermiyor — bu bölüm yalnızca görsel öncesi/sonrası karşılaştırması içindir; yeni tasarımın koda aktarılması ayrı bir adım olarak bekliyor.
-
-#### Sprint 6 Ürün Görselleri — Öncesi / Sonrası
+### Sprint 6 Ürün Görselleri
 
 <table>
   <tr>
-    <th width="50%">Önce</th>
-    <th width="50%">Sonra</th>
-  </tr>
-  <tr>
-    <td><img src="docs/ada_genel_gorunum.png" alt="Ada genel görünümü — önceki tasarım" width="100%" /></td>
-    <td><img src="docs/v2_ada_genel_gorunum.png" alt="Ada genel görünümü — merkeze MEYDAN tabelası eklendi" width="100%" /></td>
-  </tr>
-  <tr>
-    <td><img src="docs/ada_gece_gorunum.png" alt="Gece görünümü — önceki tasarım" width="100%" /></td>
-    <td><img src="docs/v2_ada_gece_gorunum.png" alt="Gece görünümü — güçlendirilmiş ışıklandırma" width="100%" /></td>
-  </tr>
-  <tr>
-    <td><img src="docs/pazar_bolgesi.png" alt="Pazar bölgesi — önceki tasarım" width="100%" /></td>
-    <td><img src="docs/v2_pazar_bolgesi.png" alt="Pazar bölgesi — yeni koyu tonlu tezgah düzeni" width="100%" /></td>
+    <td width="50%"><img src="docs/v2_ada_genel_gorunum.png" alt="Ada genel görünümü — MEYDAN tabelası" width="100%" /></td>
+    <td width="50%"><img src="docs/v2_pazar_bolgesi.png" alt="Pazar bölgesi — yeni tezgah düzeni" width="100%" /></td>
   </tr>
 </table>
-
 <p align="center">
-  <img src="docs/v2_basari_bolgesi.png" alt="Başarı bölgesi — yeni pergolalı ödül tapınağı tasarımı" width="70%" />
+  <img src="docs/v2_basari_bolgesi.png" alt="Başarı bölgesi — pergolalı ödül tapınağı" width="60%" />
 </p>
-<p align="center"><sub>Başarı bölgesi — yeni tasarım (önceki sürüme ait ayrı bir yakın çekim görsel yoktu).</sub></p>
 
 ### Sprint 6 Review
 
-Yeni tasarımın, bölgelerin işlevini (Başarı = ödül/kürsü, Pazar = tezgah/alışveriş) daha net anlattığı ve merkezdeki tabelanın dünyaya kimlik kattığı değerlendirilmiştir.
-
-Alınan kararlar:
-- Yeni tasarımın kaynak koda (`voxel-world.ts`) aktarılması bir sonraki sprintte ele alınacaktır.
-- Görsel güncellemeler yapılırken, AI Fikir Çekirdeği'nin bölge renk/koordinat varsayımlarının (`REGION_CENTERS`, `REGIONS` renkleri) yeni tasarımla tutarlı kalıp kalmadığı ayrıca kontrol edilmelidir.
+Yeni tasarımın bölgelerin işlevini daha net anlattığı, Atölye'nin ise "gerçek oyun hissini" güçlendirdiği değerlendirilmiştir — ancak Atölye şu an mevcut fikir/katkı ekonomisinden **bağımsız** bir sandbox; bir sonraki adımda buna bağlanması gerekiyor.
 
 ### Sprint 6 Retrospective
 
-Tasarım ve kod tabanının ayrı araçlarda (Lovable / bu repo) ilerlemesi, görsel güncellemelerin dokümantasyona koddan önce girebildiğini gösterdi — bu README bölümü bilinçli olarak "henüz koda yansımadı" notuyla işaretlenmiştir ki ileride "iddia edilen ile kodda olan" karışmasın.
-
-Alınan kararlar:
-- Tasarım güncellemeleri koda aktarılana kadar, ilgili README bölümlerinde bunun açıkça belirtilmesi gerekir.
+Tasarım güncellemeleri, önce görsel/deneyim olarak doğrulanıp sonra veri katmanına bağlanacak şekilde aşamalı ilerletildi — bu, önceki sprintlerde de izlenen "önce görsel, sonra backend" yaklaşımıyla tutarlı.
 
 ---
 
@@ -397,8 +370,8 @@ Alınan kararlar:
 
 ### Klasörler
 
-- `src/routes/` — TanStack Start dosya tabanlı route'lar (şu an tek route: `/`)
-- `src/components/` — `IdeaSquare.tsx` (ana 3B sahne bileşeni + "Fikrini Paylaş" paneli), `IdeasBrowser.tsx` ("Fikirler & Katkılar" paneli, liderlik tablosu), `Joystick.tsx` (karakter kontrolü), `ui/` (shadcn tabanlı arayüz bileşenleri)
+- `src/routes/` — TanStack Start dosya tabanlı route'lar: `/` (ana dünya), `/atolye` (Atölye giriş sayfası), `/insa` (blok inşa modu)
+- `src/components/` — `IdeaSquare.tsx` (ana 3B sahne bileşeni + "Fikrini Paylaş" paneli), `IdeasBrowser.tsx` ("Fikirler & Katkılar" paneli, liderlik tablosu), `AtolyeKapisi.tsx` / `BuildYard.tsx` (Atölye inşa modu — henüz katkı sistemine bağlı değil), `Joystick.tsx` (karakter kontrolü), `ui/` (shadcn tabanlı arayüz bileşenleri)
 - `src/lib/` — `voxel-world.ts` (voxel dünya üretimi: 6 bölge, çekirdek, NPC'ler), `istanbul-time.ts` (gündüz/gece saat mantığı), `seascape.ts` (ada çevresindeki deniz), `idea-core.ts` (Zod şeması, deterministik fallback, plan→voxel dönüşümü — izomorfik), `idea-core-ai.ts` (AI Fikir Çekirdeği'nin `createServerFn` sunucu fonksiyonu), `db.ts` (paylaşılan Postgres bağlantı havuzu), `ideas-db.ts` (fikir/katkı/KP `createServerFn`'leri — bunlar da sunucuda çalışır), `use-meydan-user.ts` (kalıcı takma ad hook'u)
 
 ### Mimari Genel Bakış
@@ -458,6 +431,7 @@ Alınan kararlar:
 - Gerçek Gemini anahtarının üretim ortamına (Vercel) eklenmesi — yerel olarak uçtan uca doğrulandı, ancak canlı dağıtımda henüz `GOOGLE_GENERATIVE_AI_API_KEY` tanımlı değil
 - Tam kapsamlı içerik moderasyonu (şu an yalnızca temel spam denetimi ve AI'nin kendi `uygunMu` sınıflandırması var; insan incelemesi/itiraz akışı yok)
 - Gerçek zamanlı (websocket tabanlı) çoklu kullanıcı senkronizasyonu — periyodik yenilemenin yerini alacak
+- **Atölye'nin (`/atolye`, `/insa`) katkı/onay/KP sistemine bağlanması** — inşa edilen blokların bir fikre katkı olarak kaydedilmesi, henüz sadece bağımsız bir sandbox
 
 ## Kurulum
 

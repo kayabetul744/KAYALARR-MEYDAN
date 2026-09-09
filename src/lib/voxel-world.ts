@@ -1,3 +1,4 @@
+import { addMinecraftExtras } from "./block-extras";
 /**
  * Fikir Meydanı - voxel dünya üreticisi.
  * Merkez yuvarlak meydan, su hendeği, dört köprü, ışınsal yollar, ağaçlar ve
@@ -57,6 +58,27 @@ export const ISLAND_R = 335;
 /** Deniz yüzeyi yüksekliği (voxel merkezi) */
 export const SEA_LEVEL = -1.35;
 
+/** Dalgalı kıyı çizgisi (açıya göre ada yarıçapı) — deniz de aynı eğriyi kullanır */
+export const coastRadius = (a: number) =>
+  ISLAND_R + Math.sin(a * 3 + 0.4) * 13 + Math.cos(a * 5 - 1.1) * 8 + Math.sin(a * 8 + 2.3) * 4;
+/** Kıyının en küçük / en büyük yarıçapı (deniz ve köpük geometrisi için) */
+export const COAST_MIN = ISLAND_R - 26;
+export const COAST_MAX = ISLAND_R + 26;
+
+/** Üretim Bölgesi bacalarının dünya koordinatları (gerçek duman partikülleri için) */
+export const CHIMNEYS: Array<{ x: number; z: number; top: number; r: number }> = [];
+/** Dağ şelalelerinin dünya koordinatları (su akıntısı + sis partikülleri için) */
+export const WATERFALLS: Array<{
+  x: number;
+  z: number;
+  top: number;
+  bottom: number;
+  w: number;
+  dirX: number;
+  dirZ: number;
+}> = [];
+
+
 /** Tasarım Bölgesi: meydanın Tasarım kapısından çıkan bulvarın ucundaki mahalle */
 export const DESIGN_CENTER = { x: 96, z: 166 };
 export const DESIGN_HALF = 60;
@@ -88,7 +110,7 @@ export const REGIONS = [
   { name: "Tasarım", color: 0xa855f7 },
   { name: "Üretim", color: 0xffa53a },
   { name: "Topluluk", color: 0x36f2b0 },
-  { name: "Pazar", color: 0xffd166 },
+  { name: "Pazar", color: 0x25d79f },
   { name: "Başarı", color: 0xffc928 },
 ] as const;
 
@@ -166,6 +188,9 @@ export function buildWorld(theme: Theme = "night"): World {
   const rnd = mulberry32(20260823);
   const out: Voxel[] = [];
   const walk: WalkMap = new Map();
+  CHIMNEYS.length = 0;
+  WATERFALLS.length = 0;
+
   const put = (x: number, y: number, z: number, kind: VoxelKind, color: number) =>
     out.push({ x, y, z, kind, color });
 
@@ -455,15 +480,27 @@ export function buildWorld(theme: Theme = "night"): World {
     return true;
   };
 
-  for (let i = 0; i < 260; i++) {
-    const a = rnd() * Math.PI * 2;
-    const r = MOAT_R + 5 + rnd() * (CITY_R - MOAT_R - 5);
-    const cx = Math.round(Math.cos(a) * r);
-    const cz = Math.round(Math.sin(a) * r);
-    const w = 3 + Math.floor(rnd() * 4);
-    const d = 3 + Math.floor(rnd() * 4);
-    if (!free(cx, cz, w, d)) continue;
-    placeBuilding(cx, cz, w, d, 5 + Math.floor(rnd() * 12));
+  /* Düzenli şehir dokusu: geniş sokaklar, okunaklı yapı adaları ve ferah kaldırımlar. */
+  const gridRoads = [-112, -88, 88, 112];
+  for (const line of gridRoads) {
+    for (let t = -CITY_R - 6; t <= CITY_R + 6; t++) {
+      if (Math.hypot(line, t) < MOAT_R + 1) continue;
+      for (let w = -3; w <= 3; w++) {
+        paveRoad(line + w, t, w === 0 && Math.abs(t) % 8 < 4);
+        paveRoad(t, line + w, w === 0 && Math.abs(t) % 8 < 4);
+      }
+    }
+  }
+
+  const lots = [-118, -100, -76, 76, 100, 118];
+  for (const cx of lots) {
+    for (const cz of lots) {
+      if (Math.hypot(cx, cz) < MOAT_R + 8) continue;
+      const w = 5 + Math.floor(rnd() * 2);
+      const d = 5 + Math.floor(rnd() * 2);
+      if (!free(cx, cz, w, d)) continue;
+      placeBuilding(cx, cz, w, d, 8 + Math.floor(rnd() * 10));
+    }
   }
 
   /* ---------- Zemin plakası (çim / kaldırım) ---------- */
@@ -479,11 +516,11 @@ export function buildWorld(theme: Theme = "night"): World {
   }
 
   /* ---------- Yol kenarı ağaçları ---------- */
-  for (let i = 0; i < 120; i++) {
-    const a = rnd() * Math.PI * 2;
-    const r = MOAT_R + 4 + rnd() * (CITY_R - MOAT_R);
-    const cx = Math.round(Math.cos(a) * r);
-    const cz = Math.round(Math.sin(a) * r);
+  for (let i = 0; i < 72; i++) {
+    const ring = i % 2 === 0 ? 74 : 120;
+    const a = (i / 36) * Math.PI * 2 + (i % 2) * 0.08;
+    const cx = Math.round(Math.cos(a) * ring);
+    const cz = Math.round(Math.sin(a) * ring);
     if (occupied.has(key(cx, cz))) continue;
     let nearRoad = false;
     for (let dx = -3; dx <= 3 && !nearRoad; dx++)
@@ -492,7 +529,7 @@ export function buildWorld(theme: Theme = "night"): World {
           nearRoad = true;
           break;
         }
-    if (!nearRoad && rnd() > 0.35) continue;
+    if (!nearRoad) continue;
     if (!free(cx, cz, 2, 2)) continue;
     const k = rnd();
     tree(cx, cz, k > 0.82 ? "blossom" : k > 0.62 ? "pine" : "broad");
@@ -983,7 +1020,7 @@ export function buildWorld(theme: Theme = "night"): World {
       }
     };
 
-    /* --- Baca + duman --- */
+    /* --- Baca (duman gerçek partiküllerle sahnede üretilir) --- */
     const chimney = (lx: number, lz: number, hh: number) => {
       for (let y = 0; y <= hh; y++) {
         const band = y % 4 < 2;
@@ -996,17 +1033,16 @@ export function buildWorld(theme: Theme = "night"): World {
           pput(lx + ox, y, lz + oz, "stone", band ? ORANGE : STEEL);
         }
       }
-      for (let i = 0; i < 10; i++) {
-        const y = hh + 1 + i;
-        const sx = Math.round(Math.sin(i * 0.8) * (1 + i * 0.35));
-        const sz = Math.round(Math.cos(i * 0.6) * (i * 0.3));
-        const r = i < 4 ? 0 : 1;
-        for (let ax = -r; ax <= r; ax++)
-          for (let az = -r; az <= r; az++)
-            if (rnd() > 0.35) pput(lx + sx + ax, y, lz + sz + az, "stone", 0xf2f4f6);
-      }
+      // baca ağzı
+      for (const [ox, oz] of [[0, 0], [1, 0], [0, 1], [1, 1]] as const)
+        pput(lx + ox, hh + 1, lz + oz, "stone", DEEP);
+      CHIMNEYS.push({ x: PC.x + lx + 0.5, z: PC.z + lz + 0.5, top: hh + 2, r: 1.4 });
       pblock(lx, lz);
+      pblock(lx + 1, lz);
+      pblock(lx, lz + 1);
+      pblock(lx + 1, lz + 1);
     };
+
 
     /* --- Silo --- */
     const silo = (lx: number, lz: number, hh: number) => {
@@ -1149,10 +1185,10 @@ export function buildWorld(theme: Theme = "night"): World {
   {
     const MC = MARKET_CENTER;
     const S = MARKET_HALF;
-    const TILE_A = isDay ? 0xdedbd4 : 0xa9a7a2;
-    const TILE_B = isDay ? 0xcfccc4 : 0x9a988f;
-    const SEAM = isDay ? 0xb6b3aa : 0x807e78;
-    const RIM = isDay ? 0x9d9a92 : 0x6d6b66;
+    const TILE_A = isDay ? 0x9bd8b6 : 0x397c63;
+    const TILE_B = isDay ? 0x74c99e : 0x276950;
+    const SEAM = isDay ? 0x42ad7c : 0x185641;
+    const RIM = isDay ? 0x238b61 : 0x124b39;
     const LEAF = 0x69b23a;
     const LEAF_D = 0x3f7f2a;
     const LEAF_L = 0x8fd15c;
@@ -1347,19 +1383,6 @@ export function buildWorld(theme: Theme = "night"): World {
       }
     };
 
-    /* --- Yerleşim (referans kompozisyonu) --- */
-    shop(0, -18);
-    marketStall(-20, -8, 4, 2, false);
-    marketStall(20, -8, 4, 2, false);
-    marketStall(0, 2, 6, 3, true);
-    marketStall(-22, 12, 3, 2, true);
-    marketStall(22, 12, 3, 2, true);
-
-    bannerPole(-20, 18);
-    bannerPole(16, 18);
-    counter(-26, 24, 14, "x");
-    counter(10, 24, 14, "x");
-
     /* --- Sarmaşıklı yeşil sütun (referanstaki köşe direkleri) --- */
     const vineColumn = (lx: number, lz: number, h = 7) => {
       for (let y = 0; y <= h; y++)
@@ -1411,6 +1434,291 @@ export function buildWorld(theme: Theme = "night"): World {
       mblock(lx, lz);
     };
 
+    /* --- TEKNOFEST girişim ve yatırım kampüsü --- */
+    const TECH = isDay ? 0x123f3a : 0x082b2a;
+    const TECH_L = isDay ? 0x256b60 : 0x17524c;
+    const GLASS_G = isDay ? 0xa4ead8 : 0x41cdb2;
+    const DATA = isDay ? 0x21b995 : 0x6dffcf;
+    const SOLAR = isDay ? 0x163f51 : 0x102f42;
+    const COPPER = isDay ? 0xd2a451 : 0xb6802e;
+    const CLOUD = isDay ? 0xe9f3ed : 0xa9c6bc;
+
+    /* Şeffaf prototip laboratuvarı: üretim masaları ve durum ışıkları. */
+    const prototypeLab = (cx: number, cz: number) => {
+      const w = 9;
+      const d = 6;
+      for (let x = -w; x <= w; x++)
+        for (let z = -d; z <= d; z++) {
+          const edge = Math.abs(x) === w || Math.abs(z) === d;
+          if (edge) {
+            for (let y = 0; y <= 6; y++) {
+              const frame = y === 0 || y === 3 || y === 6 || Math.abs(x) === w && Math.abs(z) === d;
+              mput(cx + x, y, cz + z, frame ? "stone" : "glass", frame ? TECH : GLASS_G);
+            }
+          }
+          mblock(cx + x, cz + z);
+        }
+      // kırma cam çatı
+      for (let x = -w; x <= w; x++)
+        for (let z = -d; z <= d; z++) {
+          const roofY = 7 + Math.max(0, 3 - Math.floor(Math.abs(x) / 3));
+          if (Math.abs(x) >= 7 || z % 2 === 0) mput(cx + x, roofY, cz + z, "glass", GLASS_G);
+        }
+      // prototipleme masaları
+      for (const rz of [-3, 0, 3])
+        for (let x = -6; x <= 6; x += 2) {
+          mput(cx + x, 1, cz + rz, "stone", CREAM);
+          mput(cx + x, 2, cz + rz, "glow", (x + rz) % 4 === 0 ? GLOWG : DATA);
+        }
+      // çatı sensörü ve durum ışığı
+      for (let y = 8; y <= 11; y++) mput(cx, y, cz, "stone", TECH);
+      mput(cx, 12, cz, "glow", DATA);
+      for (const dx of [-2, 2]) mput(cx + dx, 9, cz, "glass", SOLAR);
+    };
+
+    /* Yatırımcı görüşme kapsülü: mahrem toplantı alanları ve bağlantı ekranları. */
+    const investorLounge = (cx: number, cz: number) => {
+      for (const dx of [-7, 7])
+        for (const dz of [-4, 4])
+          for (let y = 0; y <= 6; y++) mput(cx + dx, y, cz + dz, "stone", TECH);
+      for (let x = -8; x <= 8; x++)
+        for (let z = -5; z <= 5; z++) {
+          const panelLine = (x + 8) % 4 === 0 || (z + 5) % 4 === 0;
+          mput(cx + x, 7 + (z > 1 ? 1 : 0), cz + z, panelLine ? "glow" : "glass", panelLine ? DATA : SOLAR);
+        }
+      // görüşme masası ve yatırım durumu göstergeleri
+      for (let x = -5; x <= 5; x++) {
+        mput(cx + x, 0, cz, "stone", TECH_L);
+        mput(cx + x, 1, cz, "stone", CREAM);
+      }
+      for (const x of [-5, 0, 5]) {
+        mput(cx + x, 2, cz, "glow", DATA);
+        mput(cx + x, 3, cz, "stone", TECH);
+      }
+      for (let x = -8; x <= 8; x++)
+        for (let z = -5; z <= 5; z++) mblock(cx + x, cz + z);
+    };
+
+    /* Gerçek zamanlı üretim/verim panosu. */
+    const dataKiosk = (lx: number, lz: number, flip = false) => {
+      for (let y = 0; y <= 5; y++) mput(lx, y, lz, "stone", TECH);
+      for (let x = -3; x <= 3; x++)
+        for (let y = 3; y <= 8; y++) {
+          const border = Math.abs(x) === 3 || y === 3 || y === 8;
+          const px = flip ? lx : lx + x;
+          const pz = flip ? lz + x : lz;
+          mput(px, y, pz, border ? "stone" : "glow", border ? TECH_L : (x + y) % 3 === 0 ? GLOWG : DATA);
+        }
+      mblock(lx, lz);
+    };
+
+    /* Fonlama kuleleri: girişimlerin gelişim aşamasını görünür kılar. */
+    const fundingTower = (lx: number, lz: number, h: number) => {
+      for (let y = 0; y <= h; y++) {
+        mput(lx, y, lz, "stone", y % 3 === 0 ? CREAM : TECH_L);
+        if (y > 1 && y % 2 === 0)
+          for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const)
+            mput(lx + dx, y, lz + dz, "glow", y % 4 === 0 ? GLOWG : DATA);
+      }
+      mput(lx, h + 1, lz, "glow", DATA);
+      mblock(lx, lz);
+    };
+
+    /* Yatırım portföyü: üç girişimin fonlama durumunu gösteren veri blokları. */
+    const portfolioStation = (cx: number, cz: number) => {
+      const stages = [DATA, GLOWG, 0xf0c75e];
+      stages.forEach((col, i) => {
+        const x0 = cx + (i - 1) * 4;
+        for (let x = -1; x <= 1; x++)
+          for (let z = -1; z <= 1; z++)
+            for (let y = 0; y <= 3; y++) mput(x0 + x, y, cz + z, y === 3 ? "glow" : "stone", col);
+        mblock(x0, cz);
+      });
+      for (let x = -6; x <= 6; x++) mput(cx + x, 5, cz, "stone", TECH);
+      for (const x of [-4, 0, 4]) mput(cx + x, 5, cz - 1, "glow", DATA);
+    };
+
+    /* Kurumsal pazar galerisi: iki katlı cephe, ürün vitrini ve canlı işlem şeridi. */
+    const exchangeGallery = (cx: number, cz: number, face: "x" | "z") => {
+      const alongX = face === "x";
+      for (let a = -13; a <= 13; a++)
+        for (let b = -5; b <= 5; b++) {
+          const lx = cx + (alongX ? a : b);
+          const lz = cz + (alongX ? b : a);
+          const edge = Math.abs(a) === 13 || Math.abs(b) === 5;
+          for (let y = 0; y <= 10; y++) {
+            const frame = edge || y === 0 || y === 5 || y === 10 || a % 6 === 0;
+            if (frame) mput(lx, y, lz, "stone", y === 5 || y === 10 ? COPPER : TECH);
+            else if (Math.abs(b) === 5) mput(lx, y, lz, "glass", GLASS_G);
+          }
+          mblock(lx, lz);
+        }
+      // Cephe boyunca akan işlem/veri şeridi.
+      for (let a = -11; a <= 11; a++) {
+        const lx = cx + (alongX ? a : 6);
+        const lz = cz + (alongX ? 6 : a);
+        mput(lx, 7, lz, "glow", a % 5 === 0 ? GLOWG : DATA);
+        if (a % 4 !== 0) mput(lx, 8, lz, "glow", a % 3 === 0 ? COPPER : DATA);
+      }
+      // Çatıdaki temiz enerji omurgası.
+      for (let a = -10; a <= 10; a += 4) {
+        const lx = cx + (alongX ? a : 0);
+        const lz = cz + (alongX ? 0 : a);
+        mput(lx, 11, lz, "stone", SOLAR);
+        mput(lx, 12, lz, "glass", DATA);
+      }
+    };
+
+    /* Pazarın uzaktan okunan simgesi: yükselen değer çizgili işlem kulesi. */
+    const marketBeacon = (cx: number, cz: number) => {
+      for (let y = 0; y <= 22; y++) {
+        const r = y < 4 ? 4 : y < 18 ? 2 : 1;
+        for (let x = -r; x <= r; x++)
+          for (let z = -r; z <= r; z++) {
+            const shell = Math.abs(x) === r || Math.abs(z) === r || y % 5 === 0;
+            if (shell) mput(cx + x, y, cz + z, y % 5 === 0 ? "glow" : "stone", y % 5 === 0 ? DATA : TECH);
+            mblock(cx + x, cz + z);
+          }
+      }
+      // Yukarı yönlü grafik oku.
+      for (let i = 0; i <= 10; i++) mput(cx - 8 + i, 13 + Math.floor(i * 0.65), cz + 3, "glow", GLOWG);
+      for (let i = 0; i <= 4; i++) {
+        mput(cx + 2 - i, 19, cz + 3, "glow", GLOWG);
+        mput(cx + 2, 19 - i, cz + 3, "glow", GLOWG);
+      }
+      mput(cx, 24, cz, "lamp", GLOWG);
+    };
+
+    /* Merkez pitch sahnesi: fikrin jüri ve yatırımcıya sunulduğu amfi. */
+    const pitchArena = (cx: number, cz: number) => {
+      for (let r = 15; r >= 5; r -= 5) {
+        const level = (15 - r) / 5;
+        for (let x = -r; x <= r; x++)
+          for (let z = -r; z <= r; z++) {
+            const d = Math.hypot(x, z);
+            if (d > r || d < r - 2) continue;
+            mput(cx + x, level, cz + z, "stone", level % 2 === 0 ? TECH : TECH_L);
+            mblock(cx + x, cz + z);
+          }
+      }
+      // sunum platformu
+      for (let x = -5; x <= 5; x++)
+        for (let z = -4; z <= 4; z++) {
+          mput(cx + x, 2, cz + z, "stone", TECH_L);
+          mblock(cx + x, cz + z);
+        }
+      // holografik fikir çekirdeği ve yükselen veri kolonları
+      for (let y = 3; y <= 12; y++) {
+        const radius = y < 8 ? 3 : 2;
+        for (let x = -radius; x <= radius; x++)
+          for (let z = -radius; z <= radius; z++)
+            if (Math.abs(x) + Math.abs(z) === radius) mput(cx + x, y, cz + z, "glow", y % 2 ? DATA : GLOWG);
+      }
+      mput(cx, 13, cz, "glow", 0xf0c75e);
+      // yatırımcı ekran duvarı: katmanlı fiyat, eşleşme ve talep verileri
+      for (let x = -10; x <= 10; x++)
+        for (let y = 4; y <= 13; y++) {
+          const border = Math.abs(x) === 10 || y === 4 || y === 13;
+          mput(cx + x, y, cz - 14, border ? "stone" : "glow", border ? TECH : (x + y) % 4 ? DATA : GLOWG);
+        }
+      for (const side of [-1, 1])
+        for (let y = 3; y <= 14; y++) {
+          mput(cx + side * 13, y, cz - 11, "stone", y % 4 === 0 ? COPPER : TECH);
+          if (y % 3 === 0) mput(cx + side * 12, y, cz - 11, "glow", DATA);
+        }
+    };
+
+    /* Ziyaretçi giriş kapısı: yarışma demosunda bölgenin odağını güçlendirir. */
+    const innovationGate = (cx: number, cz: number) => {
+      for (const x of [-11, 11])
+        for (let y = 0; y <= 15; y++) {
+          const width = y < 3 || y > 12 ? 2 : 1;
+          for (let dx = -width; dx <= width; dx++) mput(cx + x + dx, y, cz, "stone", y % 4 === 0 ? COPPER : TECH);
+        }
+      for (let x = -11; x <= 11; x++) {
+        mput(cx + x, 15, cz, "stone", Math.abs(x) % 5 === 0 ? COPPER : TECH);
+        mput(cx + x, 14, cz, "glow", Math.abs(x) <= 7 ? DATA : GLOWG);
+      }
+      // Merkezde ağ ve değer üretimini anlatan elmas amblem.
+      for (let x = -4; x <= 4; x++)
+        for (let y = 16; y <= 23; y++) {
+          const d = Math.abs(x) + Math.abs(y - 19.5);
+          if (d <= 4.5 && d >= 2.5) mput(cx + x, y, cz, "glow", y > 19 ? GLOWG : DATA);
+        }
+      mput(cx, 20, cz, "lamp", CLOUD);
+      mblock(cx - 11, cz);
+      mblock(cx + 11, cz);
+    };
+
+    /* Ürün vitrin kapsülü: gezerken ürün, talep ve eşleşme akışını okunur kılar. */
+    const productPod = (cx: number, cz: number, rotation: "x" | "z", level: number) => {
+      const alongX = rotation === "x";
+      for (let a = -4; a <= 4; a++)
+        for (let b = -3; b <= 3; b++) {
+          const lx = cx + (alongX ? a : b);
+          const lz = cz + (alongX ? b : a);
+          const edge = Math.abs(a) === 4 || Math.abs(b) === 3;
+          if (edge) {
+            for (let y = 0; y <= 5; y++) {
+              const frame = y === 0 || y === 5 || Math.abs(a) === 4 && Math.abs(b) === 3;
+              mput(lx, y, lz, frame ? "stone" : "glass", frame ? LEAF_D : GLASS_G);
+            }
+          }
+          mblock(lx, lz);
+        }
+      // İçeride sergilenen ürün ve ön cephede aşama göstergesi.
+      for (let y = 1; y <= 3 + level; y++) mput(cx, y, cz, y === 3 + level ? "glow" : "stone", DATA);
+      for (let i = -3; i <= 3; i++) {
+        const lx = cx + (alongX ? i : 4);
+        const lz = cz + (alongX ? 4 : i);
+        mput(lx, 3, lz, "glow", i <= -3 + level * 2 ? GLOWG : TECH_L);
+      }
+      // Yeşil kanopi, kapsülleri tek bir pazar dili altında birleştirir.
+      for (let a = -5; a <= 5; a++) {
+        const lx = cx + (alongX ? a : 0);
+        const lz = cz + (alongX ? 0 : a);
+        mput(lx, 7, lz, "stone", a % 3 === 0 ? CREAM : LEAF);
+      }
+      mput(cx, 8, cz, "glow", GLOWG);
+    };
+
+    /* Eşleşme istasyonu: iki tarafı veri köprüsüyle bir araya getiren odak. */
+    const matchHub = (cx: number, cz: number) => {
+      for (const side of [-1, 1]) {
+        for (let y = 0; y <= 9; y++) {
+          mput(cx + side * 5, y, cz, "stone", y % 3 === 0 ? LEAF : TECH);
+          if (y > 2 && y % 2 === 0) mput(cx + side * 4, y, cz, "glow", DATA);
+        }
+        mblock(cx + side * 5, cz);
+      }
+      for (let x = -5; x <= 5; x++) {
+        mput(cx + x, 10, cz, "stone", x % 3 === 0 ? CREAM : LEAF_D);
+        mput(cx + x, 9, cz, "glow", Math.abs(x) < 4 ? GLOWG : DATA);
+      }
+      // Birbirine bağlanan iki düğüm simgesi.
+      for (const side of [-1, 1])
+        for (let dx = -2; dx <= 2; dx++)
+          for (let dy = -2; dy <= 2; dy++)
+            if (Math.abs(dx) + Math.abs(dy) === 2)
+              mput(cx + side * 3 + dx, 14 + dy, cz, "glow", side < 0 ? DATA : GLOWG);
+      for (let x = -1; x <= 1; x++) mput(cx + x, 14, cz, "glow", CREAM);
+    };
+
+    /* Modüler yeşil yönlendirme omurgası; boşluğu doldururken yaya aksını açık tutar. */
+    const marketRail = (lx: number, lz: number, len: number, along: "x" | "z") => {
+      for (let i = 0; i < len; i++) {
+        const x = along === "x" ? lx + i : lx;
+        const z = along === "z" ? lz + i : lz;
+        if (i % 4 === 0) {
+          for (let y = 0; y <= 3; y++) mput(x, y, z, "stone", LEAF_D);
+          mput(x, 4, z, "glow", GLOWG);
+          mblock(x, z);
+        } else {
+          mput(x, 1, z, "stone", i % 2 === 0 ? LEAF : LEAF_L);
+        }
+      }
+    };
+
     /* --- Ön giriş merdiveni (güney) --- */
     for (let i = 0; i < 3; i++) {
       const lz = S + 1 + i;
@@ -1421,18 +1729,6 @@ export function buildWorld(theme: Theme = "night"): World {
         occupied.add(mk(lx, lz));
       }
     }
-
-    starSign(0, -2, 7);
-    vineColumn(-10, -20);
-    vineColumn(10, -20);
-    vineColumn(-28, -10);
-    vineColumn(28, -10);
-    vineColumn(-28, 14);
-    vineColumn(28, 14);
-
-    marketStall(-14, -20, 3, 2, true);
-    marketStall(14, -20, 3, 2, true);
-    counter(-6, 28, 12, "x");
 
     for (const [px, pz] of [
       [-30, -22],
@@ -1468,6 +1764,63 @@ export function buildWorld(theme: Theme = "night"): World {
       bush(lx, S - 3, false);
       bush(lx, -S + 3, true);
     }
+
+    // Ana yaya aksı: veri akışını temsil eden çift renkli zemin izi.
+    for (let lz = -38; lz <= 52; lz++) {
+      for (const lx of [-2, 2]) {
+        mput(lx, 0, lz, "glow", lx < 0 ? GLOWG : DATA);
+        walk.set(mk(lx, lz), 0);
+      }
+    }
+
+    // Dört işlev adasını birbirine bağlayan yeşil bulvarlar ve yön okları.
+    for (const lz of [-29, 21])
+      for (let lx = -49; lx <= 49; lx++) {
+        if (Math.abs(lx) < 8) continue;
+        const stripe = Math.abs(lx) % 7 < 3;
+        mput(lx, 0, lz, stripe ? "glow" : "stone", stripe ? GLOWG : LEAF_D);
+        walk.set(mk(lx, lz), 0);
+      }
+    for (const z of [-18, 12, 39]) {
+      for (let x = -3; x <= 3; x++) {
+        const arrow = Math.abs(x) <= Math.max(0, 3 - Math.abs(z % 5));
+        if (arrow) mput(x, 1, z, "glow", CREAM);
+      }
+    }
+
+    pitchArena(0, -9);
+    exchangeGallery(-40, -38, "x");
+    exchangeGallery(40, -38, "x");
+    prototypeLab(-42, 10);
+    investorLounge(41, 10);
+    dataKiosk(-45, 31);
+    dataKiosk(45, 31, true);
+    portfolioStation(0, 31);
+    marketBeacon(0, -43);
+    innovationGate(0, 48);
+    matchHub(0, 20);
+    for (const [px, pz, dir, level] of [
+      [-27, -21, "x", 1],
+      [-14, -34, "z", 2],
+      [27, -21, "x", 3],
+      [14, -34, "z", 2],
+      [-27, 35, "x", 3],
+      [27, 35, "x", 1],
+      [-16, 8, "z", 2],
+      [16, 8, "z", 3],
+    ] as const)
+      productPod(px, pz, dir, level);
+    marketRail(-52, -54, 105, "x");
+    marketRail(-52, 53, 105, "x");
+    marketRail(-54, -50, 101, "z");
+    marketRail(53, -50, 101, "z");
+    for (const [tx, tz, th] of [
+      [-51, -10, 10],
+      [-48, 43, 8],
+      [48, 43, 8],
+      [51, -10, 10],
+    ] as const)
+      fundingTower(tx, tz, th);
   }
 
   
@@ -1487,6 +1840,9 @@ export function buildWorld(theme: Theme = "night"): World {
     const TEAL_L = 0x63d6da;
     const CYAN = 0x8ff2f7;
     const ICE = 0xd7fbff;
+    const BLUE = isDay ? 0x2775c9 : 0x2357b8;
+    const BLUE_D = isDay ? 0x174f91 : 0x173b79;
+    const BLUE_L = isDay ? 0x6dbbff : 0x4f91ff;
     const GRASS_C = isDay ? 0x4fae46 : 0x2a6b3c;
     const LEAFC = isDay ? 0x49a83f : 0x2c7a3d;
     const TRUNK = isDay ? 0x6b4a2f : 0x40301f;
@@ -1542,10 +1898,23 @@ export function buildWorld(theme: Theme = "night"): World {
           cfloor(lx, lz, 1, m === S - 8 ? RIM : lerpHex(TILE_A, TILE_B, 0.5));
           continue;
         }
-        // üst teras: açık gri fayans, hafif damalı
+        // Üst teras: topluluk ağını anlatan sık turkuaz veri ızgarası.
+        // Desen zeminin kendisinde kalır; yürüyüş alanını daraltmaz.
         for (let y = -1; y < TOP; y++) cput(lx, y, lz, "stone", TILE_B);
         const checker = (lx + lz) % 2 === 0;
-        cfloor(lx, lz, TOP, checker ? TILE_A : lerpHex(TILE_A, TILE_B, 0.45));
+        const gridLine = Math.abs(lx) % 10 === 0 || Math.abs(lz) % 10 === 0;
+        const gridNode = Math.abs(lx) % 10 === 0 && Math.abs(lz) % 10 === 0;
+        const ideaPulse = (Math.abs(lx * 3 + lz * 5) % 29 === 0) && Math.hypot(lx, lz) > 10;
+        const floorColor = gridNode
+          ? lerpHex(TILE_A, CYAN, 0.62)
+          : ideaPulse
+            ? lerpHex(TILE_A, BLUE_L, 0.46)
+            : gridLine
+              ? lerpHex(TILE_A, TEAL_L, 0.3)
+              : checker
+                ? TILE_A
+                : lerpHex(TILE_A, TILE_B, 0.45);
+        cfloor(lx, lz, TOP, floorColor);
       }
     }
 
@@ -1896,6 +2265,182 @@ export function buildWorld(theme: Theme = "night"): World {
       }
     }
 
+    /* --- Topluluk merkezi: katmanlı, açık cepheli mavi-turkuaz buluşma yapısı --- */
+    const communityHub = (cx: number, cz: number) => {
+      const w = 11;
+      const d = 7;
+      // Yükseltilmiş kaide ve erişilebilir ön basamaklar
+      for (let x = -w; x <= w; x++)
+        for (let z = -d; z <= d; z++) {
+          const edge = Math.abs(x) === w || Math.abs(z) === d;
+          cput(cx + x, TOP + 1, cz + z, "stone", edge ? BLUE_D : lerpHex(TILE_A, TEAL_L, 0.16));
+          cblock(cx + x, cz + z);
+        }
+      for (let step = 0; step < 4; step++)
+        for (let x = -5 + step; x <= 5 - step; x++) {
+          cput(cx + x, TOP + 1 + step, cz + d + 1 - step, "stone", step % 2 ? TEAL : BLUE);
+          cblock(cx + x, cz + d + 1 - step);
+        }
+
+      // İnce taşıyıcılar, cam duvarlar ve katmanlı çatı
+      for (const x of [-w, w])
+        for (const z of [-d, d])
+          for (let y = TOP + 2; y <= TOP + 12; y++)
+            cput(cx + x, y, cz + z, "stone", y % 4 === 0 ? TEAL : BLUE_D);
+      for (let x = -w; x <= w; x++)
+        for (let z = -d; z <= d; z++) {
+          const frame = x % 5 === 0 || z === -d || Math.abs(x) === w;
+          if (frame)
+            cput(cx + x, TOP + 8, cz + z, frame && x % 5 === 0 ? "glow" : "glass", x % 5 === 0 ? CYAN : BLUE_L);
+          cput(cx + x, TOP + 13 + (Math.abs(x) < 7 ? 1 : 0), cz + z, (x + z) % 5 === 0 ? "glow" : "glass", (x + z) % 5 === 0 ? CYAN : BLUE_L);
+        }
+
+      // İçeride ortak üretim masası ve canlı veri yüzeyi
+      for (let x = -6; x <= 6; x++) {
+        cput(cx + x, TOP + 3, cz, "stone", ICE);
+        cput(cx + x, TOP + 4, cz, "glow", x % 3 === 0 ? CYAN : BLUE_L);
+      }
+      for (let x = -5; x <= 5; x++)
+        for (let y = TOP + 6; y <= TOP + 10; y++) {
+          const signal = y === TOP + 6 || (x + y) % 4 === 0;
+          cput(cx + x, y, cz - d + 1, signal ? "glow" : "glass", signal ? CYAN : ICE);
+        }
+      // Çatı işareti: birbirine bağlanan üç düğüm
+      for (let y = TOP + 15; y <= TOP + 19; y++) cput(cx, y, cz, "glow", y % 2 ? CYAN : BLUE_L);
+      for (const dx of [-4, 4]) {
+        cput(cx + dx, TOP + 17, cz, "glow", TEAL_L);
+        for (let x = Math.min(0, dx); x <= Math.max(0, dx); x++)
+          cput(cx + x, TOP + 17, cz, "glow", lerpHex(CYAN, BLUE_L, Math.abs(x) / 4));
+      }
+    };
+
+    /* --- Bağlantı kuleleri: farklı yüksekliklerle güçlü bir silüet --- */
+    const signalTower = (lx: number, lz: number, h: number, mirror = false) => {
+      for (let y = TOP + 1; y <= TOP + h; y++) {
+        const wide = y < TOP + 4 || y > TOP + h - 3;
+        for (let x = wide ? -2 : -1; x <= (wide ? 2 : 1); x++)
+          for (let z = wide ? -2 : -1; z <= (wide ? 2 : 1); z++) {
+            const shell = wide || Math.abs(x) + Math.abs(z) === 1;
+            if (shell) cput(lx + x, y, lz + z, y % 4 === 0 ? "glow" : "stone", y % 4 === 0 ? BLUE_L : BLUE_D);
+          }
+      }
+      const arm = mirror ? -1 : 1;
+      for (let i = 1; i <= 7; i++) {
+        cput(lx + arm * i, TOP + h - Math.floor(i / 3), lz, "glow", lerpHex(CYAN, BLUE_L, i / 7));
+        if (i % 3 === 0) cput(lx + arm * i, TOP + h - Math.floor(i / 3) - 1, lz, "lamp", ICE);
+      }
+      cput(lx, TOP + h + 1, lz, "lamp", CYAN);
+      for (let x = -2; x <= 2; x++) for (let z = -2; z <= 2; z++) cblock(lx + x, lz + z);
+    };
+
+    /* --- Yarı açık fikir kapsülleri: ekran, bank ve turkuaz saçak --- */
+    const collaborationPod = (cx: number, cz: number, face: 1 | -1) => {
+      for (let x = -6; x <= 6; x++)
+        for (let z = -4; z <= 4; z++) {
+          const back = z === -4 * face;
+          const side = Math.abs(x) === 6;
+          if (back || side)
+            for (let y = TOP + 1; y <= TOP + 7; y++)
+              cput(cx + x, y, cz + z, y % 3 === 0 ? "glass" : "stone", y % 3 === 0 ? BLUE_L : TEAL_D);
+          cput(cx + x, TOP + 8 + (Math.abs(x) < 4 ? 1 : 0), cz + z, (x + z) % 4 === 0 ? "glow" : "stone", (x + z) % 4 === 0 ? CYAN : BLUE);
+          cblock(cx + x, cz + z);
+        }
+      // Oturma sırası ve sunum ekranı
+      for (let x = -4; x <= 4; x++) {
+        cput(cx + x, TOP + 2, cz + face, "stone", ICE);
+        cput(cx + x, TOP + 3, cz + face, "stone", TEAL);
+        cput(cx + x, TOP + 5, cz - 3 * face, "glow", x % 3 === 0 ? CYAN : BLUE_L);
+      }
+    };
+
+    communityHub(0, 33);
+    collaborationPod(-32, 24, 1);
+    collaborationPod(32, 24, 1);
+    signalTower(-38, -8, 17, false);
+    signalTower(38, -8, 14, true);
+
+    /* --- Dış çevrede ritmik veri totemleri ve mavi ışık şeridi --- */
+    for (const [lx, lz, h] of [
+      [-42, 38, 6], [-28, 42, 8], [28, 42, 8], [42, 38, 6],
+      [-43, 8, 7], [43, 8, 7], [-42, -28, 9], [42, -28, 9],
+    ] as const) {
+      for (let y = TOP + 1; y <= TOP + h; y++)
+        cput(lx, y, lz, y === TOP + h || y % 3 === 0 ? "glow" : "stone", y === TOP + h ? CYAN : y % 3 === 0 ? BLUE_L : TEAL_D);
+      cblock(lx, lz);
+    }
+    for (let lx = -22; lx <= 22; lx += 4) {
+      const lz = 47;
+      cput(lx, TOP + 1, lz, "stone", BLUE_D);
+      cput(lx, TOP + 2, lz, "glow", lx % 8 === 0 ? CYAN : BLUE_L);
+      cblock(lx, lz);
+    }
+
+    /* --- Kolektif kuleler: bölgeye uzaktan okunan yoğun ve katmanlı silüet --- */
+    const collectiveTower = (cx: number, cz: number, h: number, flip = false) => {
+      for (let level = 0; level < h; level++) {
+        const inset = level > h * 0.7 ? 2 : level > h * 0.38 ? 1 : 0;
+        const half = 5 - inset;
+        for (let x = -half; x <= half; x++)
+          for (let z = -half; z <= half; z++) {
+            const shell = Math.abs(x) === half || Math.abs(z) === half;
+            if (!shell) continue;
+            const beam = level % 5 === 0 || x === 0 || z === 0;
+            cput(
+              cx + x,
+              TOP + 1 + level,
+              cz + z,
+              beam ? "stone" : "glass",
+              beam ? (level % 10 === 0 ? TEAL : BLUE_D) : BLUE_L,
+            );
+            cblock(cx + x, cz + z);
+          }
+      }
+      // Kat bahçeleri ve dışa uzanan sosyal balkonlar
+      for (const y of [TOP + 9, TOP + 17, TOP + h - 2]) {
+        const dir = flip ? -1 : 1;
+        for (let i = -6; i <= 6; i++) {
+          cput(cx + i, y, cz + dir * 6, i % 3 === 0 ? "glow" : "stone", i % 3 === 0 ? CYAN : TEAL);
+          if (Math.abs(i) % 4 === 0) cput(cx + i, y + 1, cz + dir * 6, "leaf", LEAFC);
+        }
+      }
+      // Tepedeki ağ düğümü
+      for (let y = TOP + h; y <= TOP + h + 5; y++) cput(cx, y, cz, "glow", CYAN);
+      for (const [dx, dz] of [[-3, 0], [3, 0], [0, -3], [0, 3]] as const) {
+        cput(cx + dx, TOP + h + 3, cz + dz, "lamp", ICE);
+        for (let i = 1; i < 3; i++)
+          cput(cx + Math.sign(dx) * i, TOP + h + 3, cz + Math.sign(dz) * i, "glow", TEAL_L);
+      }
+    };
+
+    collectiveTower(-42, -25, 25, false);
+    collectiveTower(42, -25, 21, true);
+    collectiveTower(-43, 27, 18, true);
+    collectiveTower(43, 27, 23, false);
+
+    /* --- Ortak forum çatısı: merkezdeki etkinliği tek bir güçlü odakta toplar --- */
+    for (const x of [-25, 25])
+      for (let y = TOP + 1; y <= TOP + 16; y++)
+        for (const z of [-12, 12]) cput(x, y, z, y % 4 === 0 ? "glow" : "stone", y % 4 === 0 ? CYAN : TEAL_D);
+    for (let x = -25; x <= 25; x++)
+      for (let z = -12; z <= 12; z++) {
+        const rib = x % 6 === 0 || Math.abs(z) === 12;
+        if (!rib && (x + z) % 5 !== 0) continue;
+        const arch = Math.round(3 * (1 - Math.abs(x) / 26));
+        cput(x, TOP + 16 + Math.max(0, arch), z, rib ? "glass" : "glow", rib ? BLUE_L : CYAN);
+      }
+
+    /* --- AI çekirdeğinden gelen fikirlerin bölgeye dağıldığını anlatan veri koridoru --- */
+    const streamColors = [0x35d6ff, 0xa855f7, 0xffa53a, 0x36f2b0, 0x25d79f, 0xffc928];
+    for (let lane = 0; lane < 6; lane++) {
+      const lz = -10 + lane * 4;
+      for (let lx = 16; lx <= 47; lx++) {
+        if (walk.get(ck(lx, lz)) !== TOP) continue;
+        if ((lx + lane * 3) % 7 < 3) cfloor(lx, lz, TOP, streamColors[lane]!);
+      }
+      for (let y = TOP + 3; y <= TOP + 7; y++)
+        cput(47, y, lz, y === TOP + 7 ? "lamp" : "glow", streamColors[lane]!);
+    }
+
   }
 
   /* ================= BAŞARI BÖLGESİ ================= *
@@ -1905,9 +2450,10 @@ export function buildWorld(theme: Theme = "night"): World {
   {
     const AC = ACHIEVEMENT_CENTER;
     const S = ACHIEVEMENT_HALF;
-    const MARBLE = isDay ? 0xe9e4d9 : 0xaaa79f;
-    const MARBLE_D = isDay ? 0xc9c3b7 : 0x77756f;
-    const MARBLE_L = isDay ? 0xf8f5ed : 0xc7c5bd;
+    /* Mermer tonları altına çalan şampanya/altın rengine kaydırıldı */
+    const MARBLE = isDay ? 0xf0d68a : 0xb99a4e;
+    const MARBLE_D = isDay ? 0xd6ac4a : 0x8d6d2c;
+    const MARBLE_L = isDay ? 0xfdeeb6 : 0xd8bc72;
     const GOLD = 0xffc51f;
     const GOLD_D = 0xc98700;
     const GOLD_L = 0xffe56d;
@@ -1926,32 +2472,61 @@ export function buildWorld(theme: Theme = "night"): World {
     };
     const ablock = (lx: number, lz: number) => walk.delete(ak(lx, lz));
 
-    /* açık taş bağlantı bulvarı */
+    /* altın bulvar: orta şerit parlak altın, kenarlar altın taş */
     {
       const len = Math.hypot(AC.x, AC.z);
       const dx = AC.x / len;
       const dz = AC.z / len;
       for (let r = MOAT_R + 6; r <= len; r += 0.35) {
-        for (let w = -6; w <= 6; w++) {
+        for (let w = -7; w <= 7; w++) {
           const x = Math.round(dx * r - dz * w);
           const z = Math.round(dz * r + dx * w);
           if (Math.abs(x - AC.x) <= S && Math.abs(z - AC.z) <= S) continue;
-          put(x, 0, z, "stone", w === 0 && r % 7 < 3 ? GOLD_L : MARBLE_D);
+          const col =
+            Math.abs(w) <= 1 ? GOLD : Math.abs(w) >= 6 ? GOLD_D : r % 9 < 4 ? GOLD_L : MARBLE;
+          put(x, 0, z, "stone", col);
           walk.set(key(x, z), 0);
           occupied.add(key(x, z));
         }
       }
+      /* bulvar boyunca altın fener sırası */
+      for (let r = MOAT_R + 14; r <= len - 12; r += 16) {
+        for (const w of [-8, 8]) {
+          const x = Math.round(dx * r - dz * w);
+          const z = Math.round(dz * r + dx * w);
+          for (let y = 1; y <= 4; y++) put(x, y, z, "stone", GOLD_D);
+          put(x, 5, z, "lamp", GOLD_L);
+          walk.delete(key(x, z));
+        }
+      }
     }
 
-    /* kare avlu ve yükseltilmiş salon zemini */
+    /* kare avlu ve yükseltilmiş salon zemini — altın karo deseni */
     for (let lx = -S; lx <= S; lx++) {
       for (let lz = -S; lz <= S; lz++) {
         const edge = Math.max(Math.abs(lx), Math.abs(lz));
         const y = edge > S - 4 ? -1 : edge > S - 7 ? 0 : 1;
         for (let yy = -1; yy <= y; yy++) aput(lx, yy, lz, "stone", yy === y ? MARBLE : MARBLE_D);
-        afloor(lx, lz, y, (lx + lz) % 5 === 0 ? MARBLE_L : MARBLE);
+        const ring = edge > S - 7;
+        const col = ring
+          ? (lx + lz) % 4 === 0
+            ? GOLD_D
+            : lerpHex(MARBLE_D, GOLD, 0.35)
+          : (lx + lz) % 5 === 0
+            ? GOLD_L
+            : lx % 8 === 0 || lz % 8 === 0
+              ? GOLD_D
+              : MARBLE;
+        afloor(lx, lz, y, col);
       }
     }
+
+    /* avlunun dış çeperinde altın bordür şeridi */
+    for (let lx = -S; lx <= S; lx++)
+      for (const lz of [-S, -S + 1, S - 1, S]) afloor(lx, lz, -1, lx % 3 === 0 ? GOLD : GOLD_D);
+    for (let lz = -S; lz <= S; lz++)
+      for (const lx of [-S, -S + 1, S - 1, S]) afloor(lx, lz, -1, lz % 3 === 0 ? GOLD : GOLD_D);
+
 
     /* güney giriş rampası ve kırmızı tören halısı */
     for (let lz = S; lz >= -4; lz--) {
@@ -2073,7 +2648,160 @@ export function buildWorld(theme: Theme = "night"): World {
               aput(lx + dx, 6 + dy, lz + dz, "leaf", lerpHex(P.leafGreen, 0xffffff, rnd() * 0.2));
       ablock(lx, lz);
     }
+
+    /* ---- Yan duvarlar: mermer gövde + altın dikey panolar + altın korniş ---- */
+    for (const side of [-1, 1]) {
+      const wx = side * (S - 5);
+      for (let lz = -S + 5; lz <= S - 12; lz++)
+        for (let y = 2; y <= 20; y++) {
+          if (y < 16 && lz % 9 !== 0) continue;
+          aput(wx, y, lz, "stone", y === 19 ? GOLD_D : MARBLE_D);
+        }
+      for (let lz = -S + 6; lz <= S - 13; lz++) {
+        aput(wx, 20, lz, "stone", MARBLE_L);
+        aput(wx, 21, lz, "stone", lz % 6 < 3 ? GOLD_D : MARBLE_D);
+      }
+      /* yan duvarlara altın sancaklar (defne rozetli) */
+      const sideBanner = (lz: number) => {
+        for (let z = -3; z <= 3; z++)
+          for (let y = 8; y <= 17; y++) {
+            const notch = y < 10 && Math.abs(z) > y - 8;
+            if (!notch) aput(wx - side, y, lz + z, "stone", z === 0 || y % 5 === 0 ? GOLD_L : GOLD_D);
+          }
+        for (let z = -2; z <= 2; z++)
+          for (let y = 11; y <= 15; y++) {
+            const d = Math.hypot(z, y - 13);
+            if (d < 2.4 && d > 1.1) aput(wx - side * 2, y, lz + z, "glow", GOLD);
+          }
+      };
+      for (const lz of [-24, -8, 8]) sideBanner(lz);
+      /* duvar dibi spotları */
+      for (const lz of [-30, -16, -2, 12]) aput(wx - side, 19, lz, "lamp", GOLD_L);
+    }
+
+    /* ---- Kuzey duvarındaki sancaklara defne çelengi halkası ---- */
+    for (const lx of [-24, -8, 8, 24])
+      for (let x = -3; x <= 3; x++)
+        for (let y = 10; y <= 16; y++) {
+          const d = Math.hypot(x, y - 13);
+          if (d < 3.1 && d > 2.2) aput(lx + x, y, -S + 1, "glow", GOLD_L);
+        }
+
+    /* ---- Salon zemininde altın kakma bordür ---- */
+    for (let lx = -S + 8; lx <= S - 8; lx++)
+      for (const lz of [-S + 8, S - 15]) afloor(lx, lz, 1, GOLD_D);
+    for (let lz = -S + 8; lz <= S - 15; lz++)
+      for (const lx of [-S + 8, S - 8]) afloor(lx, lz, 1, GOLD_D);
+    for (let lx = -S + 9; lx <= S - 9; lx++)
+      for (const lz of [-S + 9, S - 16]) afloor(lx, lz, 1, lerpHex(GOLD_L, MARBLE_L, 0.35));
+    for (let lz = -S + 9; lz <= S - 16; lz++)
+      for (const lx of [-S + 9, S - 9]) afloor(lx, lz, 1, lerpHex(GOLD_L, MARBLE_L, 0.35));
+
+    /* ---- Kırmızı halının altın kenarı ---- */
+    for (let lz = -4; lz <= 18; lz++)
+      for (const lx of [-5, 5]) afloor(lx, lz, 1, GOLD);
+
+    /* ---- Kupanın çevresinde altın şamdanlar (mumlu) ---- */
+    const candle = (lx: number, lz: number, h = 4) => {
+      for (let y = 2; y <= h; y++) aput(lx, y, lz, "stone", y === h ? GOLD_L : GOLD_D);
+      aput(lx, h + 1, lz, "glow", GOLD_L);
+      aput(lx, h + 2, lz, "lamp", 0xfff3b0);
+      ablock(lx, lz);
+    };
+    for (const [cx, cz] of [
+      [-13, -6], [13, -6], [-13, -16], [13, -16], [-9, 3], [9, 3], [0, 5],
+      [-17, -11], [17, -11],
+    ] as const)
+      candle(cx, cz);
+
+    /* ---- Kaide yüzlerine altın plaketler ---- */
+    for (let tier = 0; tier < 4; tier++) {
+      const r = 10 - tier * 2;
+      const y = 2 + tier;
+      for (let x = -r + 1; x <= r - 1; x++) {
+        if ((x + r) % 3 !== 0) continue;
+        aput(x, y, r - 6, "glow", GOLD_L);
+        aput(x, y, -r - 6, "glow", GOLD);
+      }
+    }
+
+    /* ---- Ürün kaidelerine altın plaket + spot ---- */
+    for (const [px, pz] of [[-24, 13], [-10, 18], [10, 18], [24, 13]] as const) {
+      for (let x = -2; x <= 2; x++) aput(px + x, 4, pz + 4, "glow", GOLD_L);
+      for (let x = -2; x <= 2; x++) aput(px + x, 4, pz - 4, "glow", GOLD);
+      for (let z = -2; z <= 2; z++) {
+        aput(px + 4, 4, pz + z, "glow", GOLD_D);
+        aput(px - 4, 4, pz + z, "glow", GOLD_D);
+      }
+      aput(px, 7, pz - 3, "lamp", GOLD_L);
+    }
+
+    /* ---- Ek başarı kaideleri (sandık, ödül kupaları) ---- */
+    const miniTrophy = (lx: number, lz: number) => {
+      for (let x = -3; x <= 3; x++)
+        for (let z = -3; z <= 3; z++)
+          for (let y = 2; y <= 5; y++)
+            if (y === 5 || Math.abs(x) === 3 || Math.abs(z) === 3)
+              aput(lx + x, y, lz + z, "stone", y === 5 ? GOLD_D : MARBLE_L);
+      for (let y = 6; y <= 11; y++) {
+        const r = y < 8 ? 0 : y < 10 ? 2 : 3;
+        for (let x = -r; x <= r; x++)
+          for (let z = -r; z <= r; z++) {
+            if (Math.hypot(x, z) > r + 0.3) continue;
+            if (y >= 10 && Math.hypot(x, z) < r - 1) continue;
+            aput(lx + x, y, lz + z, y === 11 ? "glow" : "stone", lerpHex(GOLD_D, GOLD_L, (y - 6) / 5));
+          }
+      }
+      for (let x = -3; x <= 3; x++) for (let z = -3; z <= 3; z++) ablock(lx + x, lz + z);
+    };
+    miniTrophy(-34, -2);
+    miniTrophy(34, -2);
+    miniTrophy(-34, -20);
+    miniTrophy(34, -20);
+    pedestal(-38, 22, 3);
+    pedestal(38, 22, 0);
+    pedestal(-2, -28, 1);
+
+    /* ---- Güney giriş kapısı: altın taçlı iki paye ---- */
+    for (const side of [-1, 1]) {
+      const gx = side * 9;
+      for (let x = -3; x <= 3; x++)
+        for (let z = -3; z <= 3; z++)
+          for (let y = 0; y <= 12; y++) {
+            const shell = y >= 11 || Math.abs(x) === 3 || Math.abs(z) === 3;
+            if (!shell) continue;
+            aput(gx + x, y, S - 12 + z, "stone", y >= 11 || y <= 1 ? GOLD_D : MARBLE_L);
+          }
+      for (let x = -2; x <= 2; x++) aput(gx + x, 13, S - 15, "glow", GOLD_L);
+      aput(gx, 14, S - 12, "lamp", GOLD_L);
+      for (let x = -3; x <= 3; x++) for (let z = -3; z <= 3; z++) ablock(gx + x, S - 12 + z);
+    }
+
+    /* ---- Avlu çevresi altın korkuluk ---- */
+    for (let lx = -S + 7; lx <= S - 7; lx++) {
+      for (const lz of [-S + 7, S - 14]) {
+        if (Math.abs(lx) <= 6 && lz === S - 14) continue;
+        aput(lx, 2, lz, "stone", MARBLE_L);
+        if (lx % 4 === 0) aput(lx, 3, lz, "glow", GOLD);
+      }
+    }
+    for (let lz = -S + 7; lz <= S - 14; lz++)
+      for (const lx of [-S + 7, S - 7]) {
+        aput(lx, 2, lz, "stone", MARBLE_L);
+        if (lz % 4 === 0) aput(lx, 3, lz, "glow", GOLD);
+      }
+
+    /* ---- Dış avluda altın fenerler ---- */
+    for (const [lx, lz] of [
+      [-46, 40], [46, 40], [-46, 10], [46, 10], [-46, -24], [46, -24], [-20, 44], [20, 44],
+    ] as const) {
+      for (let y = 0; y <= 5; y++) aput(lx, y, lz, "stone", DARK);
+      aput(lx, 6, lz, "lamp", GOLD_L);
+      aput(lx, 7, lz, "glow", GOLD);
+      ablock(lx, lz);
+    }
   }
+
 
   /* ================= FİKİR BÖLGESİ ================= *
    * Referans görseldeki mor izometrik fikir meydanı: girişte dev taş kemer,
@@ -2446,31 +3174,27 @@ export function buildWorld(theme: Theme = "night"): World {
     const PALM_LEAF = isDay ? 0x3fa84e : 0x256b3c;
     const COCO = isDay ? 0x7a4b22 : 0x4a3018;
 
-    /** Dalgalı kıyı çizgisi */
-    const coast = (a: number) =>
-      ISLAND_R +
-      Math.sin(a * 3 + 0.4) * 13 +
-      Math.cos(a * 5 - 1.1) * 8 +
-      Math.sin(a * 8 + 2.3) * 4;
+    /** Dalgalı kıyı çizgisi (deniz ile ortak) */
+    const coast = coastRadius;
 
     const surface = new Map<string, number>();
 
-    for (let x = -ISLAND_R - 34; x <= ISLAND_R + 34; x++) {
-      for (let z = -ISLAND_R - 34; z <= ISLAND_R + 34; z++) {
+    for (let x = -ISLAND_R - 60; x <= ISLAND_R + 60; x++) {
+      for (let z = -ISLAND_R - 60; z <= ISLAND_R + 60; z++) {
         const d = Math.hypot(x, z);
-        if (d > ISLAND_R + 34) continue;
+        if (d > ISLAND_R + 60) continue;
         const R = coast(Math.atan2(z, x));
-        if (d > R + 9) continue;
+        if (d > R + 58) continue;
         const k = key(x, z);
         if (occupied.has(k) || walk.has(k)) continue;
 
         if (d > R) {
-          // sığ resif tabanı (su altında kalır)
-          put(x, -3, z, "stone", lerpHex(WET, ROCK, rnd() * 0.4));
+          // Su altındaki milyonlarca görünmez blok yerine deniz yüzeyi kullanılır.
           continue;
         }
         if (d > R - 3) {
           put(x, -2, z, "stone", lerpHex(WET, SAND_B, rnd()));
+          put(x, -3, z, "stone", lerpHex(WET, ROCK, 0.4));
           surface.set(k, -2);
           setWalk(x, z, -2);
           continue;
@@ -2478,6 +3202,7 @@ export function buildWorld(theme: Theme = "night"): World {
         if (d > R - 16) {
           const c = lerpHex(SAND_A, SAND_B, rnd());
           put(x, -1, z, "stone", c);
+          put(x, -2, z, "stone", lerpHex(c, 0x000000, 0.25));
           surface.set(k, -1);
           setWalk(x, z, -1);
           continue;
@@ -2489,6 +3214,7 @@ export function buildWorld(theme: Theme = "night"): World {
         setWalk(x, z, -1);
       }
     }
+
 
     /** Bloklu palmiye ağacı */
     const palm = (cx: number, cz: number, base: number, h: number, lean = 0) => {
@@ -2645,7 +3371,87 @@ export function buildWorld(theme: Theme = "night"): World {
       [232, 214, 9, "lighthouse"],
     ];
     for (const [cx, cz, rad, kind] of isletSpots) islet(cx, cz, rad, kind);
+
+    /* ================= DENİZDEKİ SIRADAĞLAR ================= *
+     * Dağlar adanın dışında, açık denizin içinden yükselen kayalık kütleler
+     * olarak duruyor; ufukta bir sıradağ silüeti oluşturur.                  */
+    const ROCK_A = isDay ? 0x8d8578 : 0x4b5060;
+    const ROCK_B = isDay ? 0x6f6a60 : 0x3a3f4d;
+    const ROCK_C = isDay ? 0xa8a094 : 0x5d6373;
+    const SNOW = isDay ? 0xfbfdff : 0xd8e6ff;
+    const PINE = isDay ? 0x2f7a44 : 0x1c4a30;
+
+    /** Deniz tabanından yükselen dağ kütlesi */
+    const seaMountain = (cx: number, cz: number, rad: number, peak: number) => {
+      const BASE = -9;
+      for (let x = -rad; x <= rad; x++)
+        for (let z = -rad; z <= rad; z++) {
+          const d = Math.hypot(x, z);
+          if (d > rad) continue;
+          const k = key(cx + x, cz + z);
+          if (occupied.has(k)) continue;
+          const n =
+            Math.sin((cx + x) * 0.11) * 0.2 +
+            Math.cos((cz + z) * 0.09) * 0.2 +
+            Math.sin((x + z) * 0.23) * 0.12;
+          const t = Math.max(0, 1 - d / rad);
+          const h = Math.round(BASE + (peak - BASE) * Math.pow(t, 1.6) * (1 + n));
+          if (h < BASE) continue;
+          for (let y = BASE; y <= h; y++) {
+            const top = y === h;
+            const snow = y > peak * 0.62;
+            const col = snow
+              ? lerpHex(SNOW, ROCK_C, top ? rnd() * 0.15 : 0.35)
+              : y < 1
+                ? lerpHex(ROCK_B, isDay ? 0x2f6f8f : 0x1a3350, 0.45)
+                : lerpHex(y % 3 === 0 ? ROCK_A : ROCK_B, ROCK_C, rnd() * 0.4);
+            put(cx + x, y, cz + z, "stone", col);
+          }
+          occupied.add(k);
+          // yamaç çamları (su seviyesinin üstünde)
+          if (h > 4 && h < peak * 0.6 && rnd() > 0.94) {
+            for (let y = h + 1; y <= h + 3; y++) put(cx + x, y, cz + z, "stone", 0x4a3626);
+            for (let dy = 0; dy <= 2; dy++)
+              for (let dx = -1; dx <= 1; dx++)
+                for (let dz = -1; dz <= 1; dz++) {
+                  if (dy === 2 && (dx !== 0 || dz !== 0)) continue;
+                  put(
+                    cx + x + dx,
+                    h + 3 + dy,
+                    cz + z + dz,
+                    "leaf",
+                    lerpHex(PINE, 0x000000, rnd() * 0.3),
+                  );
+                }
+          }
+        }
+    };
+
+    // Açık denizde, gemi yörüngelerinin ötesinde bir sıradağ kuşağı
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2 + 0.22;
+      const r = 850 + Math.sin(i * 1.7) * 55;
+      const cx = Math.round(Math.cos(a) * r);
+      const cz = Math.round(Math.sin(a) * r);
+      const px = -Math.sin(a);
+      const pz = Math.cos(a);
+      seaMountain(cx, cz, 46, 74 + Math.round(rnd() * 26));
+      seaMountain(Math.round(cx + px * 52), Math.round(cz + pz * 52), 36, 54 + Math.round(rnd() * 18));
+      seaMountain(Math.round(cx - px * 50), Math.round(cz - pz * 50), 30, 42 + Math.round(rnd() * 16));
+      // öndeki küçük kayalıklar
+      seaMountain(
+        Math.round(cx - Math.cos(a) * 70 + px * 24),
+        Math.round(cz - Math.sin(a) * 70 + pz * 24),
+        16,
+        20 + Math.round(rnd() * 10),
+      );
+    }
+
+
   }
+
+  /* ---------- Ek katman: bloklu binalar, "MEYDAN" yazısı, İnşa Kapısı ---------- */
+  addMinecraftExtras({ put, walk, occupied, isDay, rnd });
 
   return { voxels: out, walk };
 
@@ -2823,35 +3629,23 @@ export function buildNpcs(walk: WalkMap): Npc[] {
   zoneCrowd(
     MARKET_CENTER,
     [
-      [0, -10],
-      [-20, -2],
-      [20, -2],
-      [0, 8],
-      [-14, 16],
-      [14, 16],
-      [-24, 6],
-      [24, 6],
-      [0, 22],
+      [0, -10], [-20, -2], [20, -2], [0, 8], [-14, 16], [14, 16],
+      [-24, 6], [24, 6], [0, 22], [-8, -18], [8, -18], [-28, 18],
+      [28, 18], [-16, 0], [16, 0], [0, 0], [-6, 14], [6, 14],
+      [-22, 26], [22, 26], [0, -24],
     ],
-    3,
+    4,
   );
 
   zoneCrowd(
     COMMUNITY_CENTER,
     [
-      [-17, -2],
-      [17, -2],
-      [0, 16],
-      [0, -14],
-      [-9, 6],
-      [9, 6],
-      [-26, 4],
-      [26, 4],
-      [-8, -20],
-      [8, -20],
-      [0, 26],
+      [-17, -2], [17, -2], [0, 16], [0, -14], [-9, 6], [9, 6],
+      [-26, 4], [26, 4], [-8, -20], [8, -20], [0, 26], [-17, 14],
+      [17, 14], [-24, -14], [24, -14], [0, 4], [-12, 22], [12, 22],
+      [-30, 20], [30, 20], [0, -26],
     ],
-    3,
+    4,
   );
 
   zoneCrowd(
@@ -2859,8 +3653,10 @@ export function buildNpcs(walk: WalkMap): Npc[] {
     [
       [-27, -8], [27, -8], [-27, 9], [27, 9],
       [-13, 0], [13, 0], [0, -18], [0, 20],
+      [-20, -18], [20, -18], [-20, 18], [20, 18],
+      [0, 0], [-8, 10], [8, 10], [-8, -10], [8, -10],
     ],
-    3,
+    4,
   );
 
   zoneCrowd(
@@ -2868,8 +3664,10 @@ export function buildNpcs(walk: WalkMap): Npc[] {
     [
       [-38, -5], [-20, -5], [0, -5], [20, -5], [38, -5],
       [-30, 25], [-12, 25], [8, 25], [28, 25],
+      [-38, 12], [-18, 12], [2, 12], [22, 12], [38, 12],
+      [-26, -20], [-6, -20], [14, -20], [32, -20],
     ],
-    3,
+    4,
   );
 
   zoneCrowd(
@@ -2877,9 +3675,12 @@ export function buildNpcs(walk: WalkMap): Npc[] {
     [
       [-18, 2], [18, 2], [-25, 22], [25, 22],
       [-9, 12], [9, 12], [0, 27], [0, -24],
+      [-18, -12], [18, -12], [-28, 8], [28, 8],
+      [0, 16], [-12, 26], [12, 26], [-6, -14], [6, -14],
     ],
-    4,
+    5,
   );
+
 
   zoneCrowd(
     IDEA_CENTER,

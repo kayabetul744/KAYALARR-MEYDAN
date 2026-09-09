@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AtolyeRouteImport } from './routes/atolye'
+import { Route as InsaRouteImport } from './routes/insa'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AtolyeRoute = AtolyeRouteImport.update({
+  id: '/atolye',
+  path: '/atolye',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InsaRoute = InsaRouteImport.update({
+  id: '/insa',
+  path: '/insa',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/atolye': typeof AtolyeRoute
+  '/insa': typeof InsaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/atolye': typeof AtolyeRoute
+  '/insa': typeof InsaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/atolye': typeof AtolyeRoute
+  '/insa': typeof InsaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/atolye' | '/insa'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/atolye' | '/insa'
+  id: '__root__' | '/' | '/atolye' | '/insa'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AtolyeRoute: typeof AtolyeRoute
+  InsaRoute: typeof InsaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/atolye': {
+      id: '/atolye'
+      path: '/atolye'
+      fullPath: '/atolye'
+      preLoaderRoute: typeof AtolyeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/insa': {
+      id: '/insa'
+      path: '/insa'
+      fullPath: '/insa'
+      preLoaderRoute: typeof InsaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AtolyeRoute: AtolyeRoute,
+  InsaRoute: InsaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

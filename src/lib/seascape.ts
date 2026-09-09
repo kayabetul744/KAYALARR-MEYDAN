@@ -5,7 +5,15 @@
  */
 
 import * as THREE from "three";
-import { ISLAND_R, SEA_LEVEL, mulberry32, type Theme } from "@/lib/voxel-world";
+import {
+  ISLAND_R,
+  SEA_LEVEL,
+  COAST_MAX,
+  coastRadius,
+  mulberry32,
+  type Theme,
+} from "@/lib/voxel-world";
+
 
 interface SeaTheme {
   deep: number;
@@ -96,6 +104,7 @@ export function createSeascape(theme: Theme): Seascape {
           "uniform float uTime;",
           "varying float vWave;",
           "varying float vDist;",
+          "varying vec2 vXZ;",
         ].join("\n"),
       )
       .replace(
@@ -109,7 +118,9 @@ export function createSeascape(theme: Theme): Seascape {
           "        + sin((wx + wz) * 0.021 + uTime * 0.45) * 0.6;",
           "transformed.y += w;",
           "vWave = w;",
+          "vXZ = position.xz;",
           "vDist = length(position.xz);",
+
         ].join("\n"),
       );
     shader.fragmentShader = shader.fragmentShader
@@ -121,23 +132,34 @@ export function createSeascape(theme: Theme): Seascape {
           "uniform vec3 uShallow;",
           "varying float vWave;",
           "varying float vDist;",
-        ].join("\n"),
+          "varying vec2 vXZ;",
+          "float coastR(float a){",
+          "  return ISLAND_R + sin(a * 3.0 + 0.4) * 13.0 + cos(a * 5.0 - 1.1) * 8.0 + sin(a * 8.0 + 2.3) * 4.0;",
+          "}",
+        ]
+          .join("\n")
+          .replace("ISLAND_R", ISLAND_R.toFixed(1)),
       )
       .replace(
         "#include <color_fragment>",
         [
           "#include <color_fragment>",
-          "if (vDist < INNER_CUTOFF) discard;",
-          "float shore = smoothstep(SHORE_FAR, SHORE_NEAR, vDist);",
+          // Deniz tam olarak dalgalı kıyı çizgisine kadar gelir; adanın altında
+          // kalan kısım tamamen atılır (köşelerde su izi/yansıma oluşmaz).
+          "float cr = coastR(atan(vXZ.y, vXZ.x));",
+          "if (vDist < cr - 3.0) discard;",
+          "float shore = smoothstep(cr + 120.0, cr - 2.0, vDist);",
           "float band = step(0.18, fract(vWave * 1.6));",
           "vec3 sea = mix(uDeep, uShallow, clamp(shore * 0.85 + vWave * 0.16 + 0.1, 0.0, 1.0));",
           "sea = mix(sea, sea * 1.12, band);",
+          // kıyı köpüğü doğrudan denizin içinde: dalgalı hatta beyaz şerit
+          "float foam = smoothstep(16.0, 2.0, vDist - cr) * step(vDist, cr + 16.0);",
+          "foam *= 0.35 + 0.65 * abs(sin(vDist * 0.35 + vWave * 2.0));",
+          "sea = mix(sea, vec3(1.0), foam * FOAM_STR);",
           "diffuseColor.rgb = sea;",
         ]
           .join("\n")
-          .replace("SHORE_FAR", (ISLAND_R + 90).toFixed(1))
-          .replace("SHORE_NEAR", (ISLAND_R - 30).toFixed(1))
-          .replace("INNER_CUTOFF", (ISLAND_R - 55).toFixed(1)),
+          .replace("FOAM_STR", isDay ? "0.55" : "0.35"),
       );
   };
   const ocean = new THREE.Mesh(oceanGeo, oceanMat);
@@ -147,26 +169,61 @@ export function createSeascape(theme: Theme): Seascape {
   group.add(ocean);
   disposables.push(oceanGeo, oceanMat);
 
-  /* ---------------- Kıyı köpüğü ---------------- */
-  const foamMat = new THREE.MeshBasicMaterial({
-    color: C.foam,
-    transparent: true,
-    opacity: isDay ? 0.4 : 0.28,
-    side: THREE.DoubleSide,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    toneMapped: false,
-  });
+  /* ---------------- Kıyı köpüğü: kıyı çizgisini takip eden dalgalı şerit ---------------- */
   const foams: THREE.Mesh[] = [];
-  for (let i = 0; i < 3; i++) {
-    const geo = new THREE.RingGeometry(ISLAND_R - 12 + i * 7, ISLAND_R + 2 + i * 8, 128);
-    const ring = new THREE.Mesh(geo, foamMat.clone());
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = SEA_LEVEL + 0.35 + i * 0.02;
-    group.add(ring);
-    foams.push(ring);
-    disposables.push(geo);
+  {
+    const SEG = 360;
+    for (let i = 0; i < 2; i++) {
+      const inner = -6 + i * 6;
+      const outer = 6 + i * 9;
+      const pos = new Float32Array(SEG * 6 * 3);
+      let p = 0;
+      for (let s = 0; s < SEG; s++) {
+        const a0 = (s / SEG) * Math.PI * 2;
+        const a1 = ((s + 1) / SEG) * Math.PI * 2;
+        const r0 = coastRadius(a0);
+        const r1 = coastRadius(a1);
+        const ax0 = Math.cos(a0);
+        const az0 = Math.sin(a0);
+        const ax1 = Math.cos(a1);
+        const az1 = Math.sin(a1);
+        const quad = [
+          [ax0 * (r0 + inner), az0 * (r0 + inner)],
+          [ax1 * (r1 + inner), az1 * (r1 + inner)],
+          [ax1 * (r1 + outer), az1 * (r1 + outer)],
+          [ax0 * (r0 + inner), az0 * (r0 + inner)],
+          [ax1 * (r1 + outer), az1 * (r1 + outer)],
+          [ax0 * (r0 + outer), az0 * (r0 + outer)],
+        ];
+        for (const [vx, vz] of quad) {
+          pos[p++] = vx!;
+          pos[p++] = 0;
+          pos[p++] = vz!;
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      geo.computeVertexNormals();
+      const ring = new THREE.Mesh(
+        geo,
+        new THREE.MeshBasicMaterial({
+          color: C.foam,
+          transparent: true,
+          opacity: isDay ? 0.3 : 0.2,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+          toneMapped: false,
+        }),
+      );
+      ring.position.y = SEA_LEVEL + 0.42 + i * 0.03;
+      ring.frustumCulled = false;
+      group.add(ring);
+      foams.push(ring);
+      disposables.push(geo);
+    }
   }
+
 
   /* ---------------- Savaş gemileri (fırkateyn) ---------------- */
   interface Ship {
@@ -261,43 +318,50 @@ export function createSeascape(theme: Theme): Seascape {
   };
 
   const ships: Ship[] = [];
-  const shipDefs: Array<[number, number, number, number, number]> = [
-    [2.4, 0, 0, 320, 0.03],
-    [2.8, 0, 0, 380, -0.022],
-    [2.1, 0, 0, 440, 0.018],
-    [3.2, 0, 0, 510, -0.014],
-    [1.8, 0, 0, 270, 0.042],
-    [2.0, 0, 0, 240, -0.05],
-    [2.6, 0, 0, 560, 0.012],
-    [1.9, 0, 0, 350, -0.034],
-    [1.5, 0, 0, 205, 0.058],
-    [3.0, 0, 0, 620, -0.01],
+  // Tüm gemiler kıyı çizgisinin dışında, birbirinden geniş aralıkta dolaşır.
+  const OFF = COAST_MAX + 45;
+  const shipDefs: Array<[number, number]> = [
+    [2.4, 0.03],
+    [2.8, -0.022],
+    [2.1, 0.018],
+    [3.2, -0.014],
+    [1.8, 0.026],
+    [2.0, -0.031],
+    [2.6, 0.012],
+    [1.9, -0.019],
   ];
-  for (const [s, , , radius, speed] of shipDefs) {
+  shipDefs.forEach(([s, speed], i) => {
     const { root, sails } = buildShip(s);
     group.add(root);
-    ships.push({ root, radius, speed, phase: rnd() * Math.PI * 2, sails });
-  }
+    ships.push({
+      root,
+      radius: OFF + i * 58,
+      speed,
+      phase: (i / shipDefs.length) * Math.PI * 2,
+      sails,
+    });
+  });
 
-  // Sandallar kıyıya yakın dolaşır
+  // Sandallar kıyının hemen açığında, eşit aralıklı
   const boatCols: Array<[number, number]> = [
     [0x8a5a30, 0xd8b070],
     [0x5c6b3a, 0xe8dfa8],
     [0x8a3f3f, 0xf2c9a0],
     [0x40566e, 0xcfe2f5],
   ];
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 8; i++) {
     const [c, a] = boatCols[i % boatCols.length]!;
     const root = buildBoat(1.6 + rnd() * 1.2, c, a);
     group.add(root);
     ships.push({
       root,
-      radius: ISLAND_R + 25 + rnd() * 70,
-      speed: (rnd() > 0.5 ? 1 : -1) * (0.05 + rnd() * 0.06),
-      phase: rnd() * Math.PI * 2,
+      radius: COAST_MAX + 16 + (i % 2) * 14,
+      speed: (i % 2 ? 1 : -1) * (0.05 + rnd() * 0.03),
+      phase: (i / 8) * Math.PI * 2 + 0.3,
       sails: [],
     });
   }
+
 
 
   /* ---------------- Balık sürüleri ---------------- */
@@ -312,8 +376,9 @@ export function createSeascape(theme: Theme): Seascape {
     count: number;
     seeds: number[];
   }> = [];
-  for (let s = 0; s < 20; s++) {
-    const count = 24;
+  const SCHOOLS = 44;
+  for (let s = 0; s < SCHOOLS; s++) {
+    const count = 34;
     const mat = new THREE.MeshStandardMaterial({
       color: fishColors[s % fishColors.length]!,
       roughness: 0.5,
@@ -326,8 +391,9 @@ export function createSeascape(theme: Theme): Seascape {
     mesh.frustumCulled = false;
     mesh.castShadow = false;
     group.add(mesh);
-    const a = (s / 20) * Math.PI * 2 + rnd();
-    const rr = ISLAND_R + 45 + rnd() * 140;
+    const a = (s / SCHOOLS) * Math.PI * 2 + rnd() * 0.4;
+    const rr = COAST_MAX + 18 + rnd() * 320;
+
     schools.push({
       mesh,
       cx: Math.cos(a) * rr,
@@ -350,7 +416,7 @@ export function createSeascape(theme: Theme): Seascape {
   }
   const octos: Octo[] = [];
   const octoColors = [0xb5417a, 0x8b3fb0, 0xd4577a, 0x6f4bd8];
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 32; i++) {
     const col = octoColors[i % octoColors.length]!;
     const root = new THREE.Group();
     const head = box(root, col, 4.4, 3.4, 4.4, 0, 1.9, 0);
@@ -382,7 +448,7 @@ export function createSeascape(theme: Theme): Seascape {
       tentacles.push(segs);
     }
     const a = (i / 16) * Math.PI * 2 + 0.7;
-    const rr = ISLAND_R + 55 + rnd() * 110;
+    const rr = COAST_MAX + 45 + rnd() * 190;
     root.position.set(Math.cos(a) * rr, SEA_LEVEL - 0.6, Math.sin(a) * rr);
     group.add(root);
     octos.push({ root, tentacles, phase: rnd() * 6, baseY: SEA_LEVEL - 0.6 });
@@ -400,7 +466,7 @@ export function createSeascape(theme: Theme): Seascape {
   const dolphins: Dolphin[] = [];
   const dolphinBody = isDay ? 0x5c7a95 : 0x35506c;
   const dolphinBelly = isDay ? 0xe7f2f7 : 0x9fb6c4;
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < 20; i++) {
     const pod = new THREE.Group();
     const podCount = 3 + Math.floor(rnd() * 2);
     for (let d = 0; d < podCount; d++) {
@@ -416,7 +482,7 @@ export function createSeascape(theme: Theme): Seascape {
       pod.add(dolphin);
     }
     const a = (i / 9) * Math.PI * 2 + rnd();
-    const rr = ISLAND_R + 40 + rnd() * 70;
+    const rr = COAST_MAX + 30 + rnd() * 150;
     dolphins.push({ root: pod, cx: Math.cos(a) * rr, cz: Math.sin(a) * rr, r: 14 + rnd() * 10, speed: 0.35 + rnd() * 0.2, phase: rnd() * Math.PI * 2 });
     group.add(pod);
   }
@@ -434,7 +500,7 @@ export function createSeascape(theme: Theme): Seascape {
   const whales: Whale[] = [];
   const whaleBody = isDay ? 0x2f4f6d : 0x1b2f47;
   const whaleBelly = isDay ? 0xcfdde6 : 0x7f95a6;
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 12; i++) {
     const root = new THREE.Group();
     for (let s = -4; s <= 4; s++) {
       const w = 7 - Math.abs(s) * 1.1;
@@ -453,7 +519,7 @@ export function createSeascape(theme: Theme): Seascape {
     }
     root.add(spout);
     const a = (i / 5) * Math.PI * 2 + 1.3;
-    const rr = ISLAND_R + 130 + rnd() * 190;
+    const rr = COAST_MAX + 120 + rnd() * 270;
     whales.push({
       root,
       spout,
@@ -477,7 +543,7 @@ export function createSeascape(theme: Theme): Seascape {
     phase: number;
   }
   const turtles: Turtle[] = [];
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 22; i++) {
     const root = new THREE.Group();
     box(root, 0x3f6b46, 3.4, 1.2, 3, 0, 0, 0);
     box(root, 0x5c8f56, 2.4, 0.7, 2.1, 0, 0.9, 0);
@@ -490,7 +556,7 @@ export function createSeascape(theme: Theme): Seascape {
     ];
     root.scale.setScalar(1.3 + rnd() * 0.8);
     const a = rnd() * Math.PI * 2;
-    const rr = ISLAND_R + 30 + rnd() * 160;
+    const rr = COAST_MAX + 20 + rnd() * 240;
     turtles.push({
       root,
       fins,
@@ -506,7 +572,7 @@ export function createSeascape(theme: Theme): Seascape {
   /* ---------------- Denizanaları ---------------- */
   const jellies: Array<{ root: THREE.Group; base: number; phase: number; tents: THREE.Object3D[] }> = [];
   const jellyColors = [0xff9ecb, 0x9ad7ff, 0xd6a8ff, 0xa8ffe4];
-  for (let i = 0; i < 18; i++) {
+  for (let i = 0; i < 38; i++) {
     const col = jellyColors[i % jellyColors.length]!;
     const root = new THREE.Group();
     box(root, col, 2.6, 1.4, 2.6, 0, 0, 0, "basic");
@@ -517,7 +583,7 @@ export function createSeascape(theme: Theme): Seascape {
       tents.push(box(root, col, 0.3, 2.4, 0.3, tx, -1.6, 0, "basic"));
     }
     const a = rnd() * Math.PI * 2;
-    const rr = ISLAND_R + 25 + rnd() * 180;
+    const rr = COAST_MAX + 15 + rnd() * 260;
     root.position.set(Math.cos(a) * rr, SEA_LEVEL - 1, Math.sin(a) * rr);
     group.add(root);
     jellies.push({ root, base: SEA_LEVEL - 1, phase: rnd() * 6, tents });
@@ -525,14 +591,14 @@ export function createSeascape(theme: Theme): Seascape {
 
   /* ---------------- Köpekbalığı yüzgeçleri ---------------- */
   const sharks: Array<{ root: THREE.Group; cx: number; cz: number; r: number; speed: number; phase: number }> = [];
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 16; i++) {
     const root = new THREE.Group();
     box(root, 0x54636f, 6.4, 1.6, 2.2, 0, -0.6, 0);
     box(root, 0x8b9aa5, 4.4, 0.7, 1.8, 0, -1.3, 0);
     box(root, 0x54636f, 1.2, 2.4, 0.5, 0, 0.9, 0);
     box(root, 0x54636f, 0.5, 2, 1.8, -3.6, 0, 0);
     const a = rnd() * Math.PI * 2;
-    const rr = ISLAND_R + 70 + rnd() * 170;
+    const rr = COAST_MAX + 60 + rnd() * 250;
     sharks.push({
       root,
       cx: Math.cos(a) * rr,
@@ -545,9 +611,9 @@ export function createSeascape(theme: Theme): Seascape {
   }
 
   /* ---------------- Kayalıklar ve şamandıralar ---------------- */
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 30; i++) {
     const a = rnd() * Math.PI * 2;
-    const rr = ISLAND_R + 20 + rnd() * 240;
+    const rr = COAST_MAX + 14 + rnd() * 320;
     const rock = new THREE.Group();
     const h = 3 + rnd() * 7;
     box(rock, isDay ? 0x6b7280 : 0x39424f, 4 + rnd() * 5, h, 4 + rnd() * 5, 0, h / 2 - 1.5, 0);
@@ -560,9 +626,9 @@ export function createSeascape(theme: Theme): Seascape {
   /* ---------------- Kum sığlıkları ve yosun tarlaları ---------------- */
   const weeds: THREE.Object3D[] = [];
   const sandCols = isDay ? [0xe8d8a8, 0xdcc890, 0xf0e4bc] : [0x7d7357, 0x6b6249, 0x8b8062];
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 52; i++) {
     const a = rnd() * Math.PI * 2;
-    const rr = ISLAND_R + 15 + rnd() * 260;
+    const rr = COAST_MAX + 14 + rnd() * 340;
     const cx = Math.cos(a) * rr;
     const cz = Math.sin(a) * rr;
     // kum yaması: birkaç düz blok
@@ -623,7 +689,7 @@ export function createSeascape(theme: Theme): Seascape {
     phase: number;
   }
   const birds: Bird[] = [];
-  for (let i = 0; i < 18; i++) {
+  for (let i = 0; i < 34; i++) {
     const root = new THREE.Group();
     box(root, 0xf6f8fb, 1.4, 0.7, 0.8, 0, 0, 0);
     box(root, 0xffc14d, 0.5, 0.25, 0.25, 0.9, 0, 0);
