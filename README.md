@@ -1,5 +1,7 @@
 # Meydan — içine gir.
 
+**🔗 Canlı (Güncel Hâli): [kayalarr-meydan.vercel.app](https://kayalarr-meydan.vercel.app)**
+
 ## Takım İsmi
 
 **KAYALAR**
